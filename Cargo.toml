@@ -1,0 +1,23 @@
+[package]
+name = "jenkinsctl"
+version = "0.1.0"
+description = "Jenkins management tool"
+readme = "README.md"
+license = "GPL-2.0-or-later"
+repository = "https://github.com/enkron/jenkinsctl"
+authors = ["Sergei Belokon srj.belokon@gmail.com"]
+keywords = ["jenkins", "jenkinsctl"]
+edition = "2021"
+rust-version = "1.65"
+
+[dependencies]
+base64 = "0.21.2"
+bytes = "1.4.0"
+clap = { version = "4.3.2", features = ["derive"] }
+http-body-util = "0.1.0-rc.2"
+hyper = { version = "0.14", features = ["full"] }
+hyper-tls = "0.5.0"
+serde = { version = "1.0.164", features = ["derive"] }
+serde_json = "1.0.96"
+tokio = { version = "1.28.2", features = ["full"] }
+urlencoding = "2.1.2"
