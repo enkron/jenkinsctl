@@ -194,9 +194,9 @@ async fn main() -> Result<()> {
                     let node_info = jenkins.node().await?;
                     for node in node_info.computer {
                         if node.offline {
-                            println!("{:.<40}offline", node.display_name);
+                            println!("{:.<40}\x1b[31moffline\x1b[0m", node.display_name);
                         } else {
-                            println!("{:.<40}online", node.display_name);
+                            println!("{:.<40}\x1b[32monline\x1b[0m", node.display_name);
                         }
                     }
                 } else {
