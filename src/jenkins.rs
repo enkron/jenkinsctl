@@ -57,7 +57,15 @@ async fn get_json_data(url: &hyper::Uri, user: &str, pswd: &str) -> Result<io::B
     Ok(writer)
 }
 
-pub struct Tree<'t>(pub &'t str);
+pub struct Tree<'t> {
+    pub query: &'t str,
+}
+
+impl<'t> Tree<'t> {
+    pub fn new(query: &'t str) -> Self {
+        Self { query }
+    }
+}
 
 impl<'t> std::fmt::Display for Tree<'t> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -167,13 +175,12 @@ impl<'x> Jenkins<'x> {
         Ok(node)
     }
 
-    pub async fn job<'t>(&self, _tree: Tree<'t>) -> Result<JobInfo> {
+    pub async fn job<'t>(&self, tree: Tree<'t>) -> Result<JobInfo> {
         let scheme = self.url.scheme().unwrap();
         let authority = self.url.authority().unwrap();
 
-        //let _xxx = format!("{scheme}://{authority}/api/json?tree={tree}").parse::<hyper::Uri>()?;
         let url =
-            format!("{scheme}://{authority}/api/json?tree=jobs[name]").parse::<hyper::Uri>()?;
+            format!("{scheme}://{authority}/api/json?tree={}", tree.query).parse::<hyper::Uri>()?;
 
         let json_data = get_json_data(&url, self.user, self.pswd).await?;
         let job: JobInfo = serde_json::from_slice(json_data.into_inner().as_slice())?;

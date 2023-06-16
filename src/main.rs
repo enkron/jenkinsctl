@@ -229,7 +229,8 @@ async fn main() -> Result<()> {
         },
         Some(Commands::Job { job_commands }) => match job_commands {
             Some(JobAction::List) => {
-                let job_info = jenkins.job(Tree("jobs[name]")).await?;
+                let tree = Tree::new("jobs[name]");
+                let job_info = jenkins.job(tree).await?;
                 println!("{:#?}", job_info.jobs);
             }
             None => todo!(),
