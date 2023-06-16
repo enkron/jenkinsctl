@@ -232,7 +232,7 @@ async fn main() -> Result<()> {
                 let tree = Tree::new("jobs[name]");
                 let job_info = jenkins.job(tree).await?;
                 for job in job_info.jobs {
-                    eprintln!("{}", job.name);
+                    println!("{}", job.name);
                 }
             }
             None => todo!(),
