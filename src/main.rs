@@ -1,5 +1,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 use clap::{Parser, Subcommand};
+use log;
+use pretty_env_logger;
 
 mod jenkins;
 mod node;
@@ -123,6 +125,8 @@ enum ShowAction {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    pretty_env_logger::init();
+
     let args = Args::parse();
     let url = std::env::var(JENKINS_URL);
     let user = std::env::var(JENKINS_USER);
@@ -133,9 +137,11 @@ async fn main() -> Result<()> {
     let token = if let Ok(v) = token { v } else { args.token };
 
     if url.is_empty() || user.is_empty() || token.is_empty() {
-        eprintln!(
-            "error: missing parameter: url={}, user={}, token={}",
-            url, user, token
+        log::error!(
+            "missing argument: url={}, user={}, token={}",
+            url,
+            user,
+            token
         );
         std::process::exit(1);
     }
