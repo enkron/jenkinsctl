@@ -113,7 +113,7 @@ enum NodeAction {
 #[derive(Subcommand)]
 enum ShowAction {
     #[command(about = "Show all nodes information")]
-    All,
+    Raw,
     #[command(about = "Show executors info")]
     Executors {
         #[arg(long, help = "Total number of executors")]
@@ -172,7 +172,7 @@ async fn main() -> Result<()> {
         },
         Some(Commands::Node { node_commands }) => match node_commands {
             Some(NodeAction::Show { show_commands }) => match show_commands {
-                Some(ShowAction::All) => {
+                Some(ShowAction::Raw) => {
                     let node_info = jenkins.node().await?;
                     println!("{:#?}", node_info);
                 }
