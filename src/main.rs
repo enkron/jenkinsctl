@@ -4,8 +4,9 @@ use log;
 use pretty_env_logger;
 
 mod jenkins;
+mod job;
 mod node;
-use crate::jenkins::{Jenkins, Result};
+use crate::jenkins::{Jenkins, Result, Tree};
 
 const JENKINS_URL: &str = "JENKINS_URL";
 const JENKINS_USER: &str = "JENKINS_USER";
@@ -58,6 +59,12 @@ enum Commands {
     Node {
         #[command(subcommand)]
         node_commands: Option<NodeAction>,
+    },
+    #[command(about = "Node actions")]
+    #[command(arg_required_else_help(true))]
+    Job {
+        #[command(subcommand)]
+        job_commands: Option<JobAction>,
     },
 }
 
@@ -121,6 +128,12 @@ enum ShowAction {
         #[arg(long, help = "Busy executors")]
         busy: bool,
     },
+}
+
+#[derive(Subcommand)]
+enum JobAction {
+    #[command(aliases = ["ls"], about = "List all jobs")]
+    List,
 }
 
 #[tokio::main]
@@ -211,6 +224,13 @@ async fn main() -> Result<()> {
                         println!("{}", node.display_name);
                     }
                 }
+            }
+            None => todo!(),
+        },
+        Some(Commands::Job { job_commands }) => match job_commands {
+            Some(JobAction::List) => {
+                let job_info = jenkins.job(Tree("jobs[name]")).await?;
+                println!("{:#?}", job_info.jobs);
             }
             None => todo!(),
         },

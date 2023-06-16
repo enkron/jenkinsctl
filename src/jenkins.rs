@@ -6,6 +6,7 @@ use serde_json;
 use tokio::io::{self, AsyncWriteExt as _};
 use urlencoding::encode;
 
+use crate::job::JobInfo;
 use crate::node::NodesInfo;
 use crate::{CopyItem, ShutdownState};
 
@@ -54,6 +55,14 @@ async fn get_json_data(url: &hyper::Uri, user: &str, pswd: &str) -> Result<io::B
     writer.flush().await?;
 
     Ok(writer)
+}
+
+pub struct Tree<'t>(pub &'t str);
+
+impl<'t> std::fmt::Display for Tree<'t> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
 pub struct Jenkins<'x> {
@@ -156,5 +165,19 @@ impl<'x> Jenkins<'x> {
         let node: NodesInfo = serde_json::from_slice(json_data.into_inner().as_slice())?;
 
         Ok(node)
+    }
+
+    pub async fn job<'t>(&self, _tree: Tree<'t>) -> Result<JobInfo> {
+        let scheme = self.url.scheme().unwrap();
+        let authority = self.url.authority().unwrap();
+
+        //let _xxx = format!("{scheme}://{authority}/api/json?tree={tree}").parse::<hyper::Uri>()?;
+        let url =
+            format!("{scheme}://{authority}/api/json?tree=jobs[name]").parse::<hyper::Uri>()?;
+
+        let json_data = get_json_data(&url, self.user, self.pswd).await?;
+        let job: JobInfo = serde_json::from_slice(json_data.into_inner().as_slice())?;
+
+        Ok(job)
     }
 }
