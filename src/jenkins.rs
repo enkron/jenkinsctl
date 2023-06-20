@@ -158,17 +158,17 @@ impl<'x> Jenkins<'x> {
         let url = format!("{}/computer/api/json", self.url).parse::<hyper::Uri>()?;
 
         let json_data = get_json_data(&url, self.user, self.pswd).await?;
-        let node: NodesInfo = serde_json::from_slice(json_data.into_inner().as_slice())?;
+        let node_info: NodesInfo = serde_json::from_slice(json_data.into_inner().as_slice())?;
 
-        Ok(node)
+        Ok(node_info)
     }
 
     pub async fn job<'t>(&self, tree: Tree<'t>) -> Result<JobInfo> {
-        let url = format!("{}/api/json?tree={}", self.url, tree.query).parse::<hyper::Uri>()?;
+        let url = format!("{}/{}", self.url, tree.query).parse::<hyper::Uri>()?;
 
         let json_data = get_json_data(&url, self.user, self.pswd).await?;
-        let job: JobInfo = serde_json::from_slice(json_data.into_inner().as_slice())?;
+        let job_info: JobInfo = serde_json::from_slice(json_data.into_inner().as_slice())?;
 
-        Ok(job)
+        Ok(job_info)
     }
 }

@@ -1,4 +1,5 @@
 #![warn(clippy::all, clippy::pedantic)]
+use async_recursion::async_recursion;
 use clap::{Parser, Subcommand};
 use log;
 use pretty_env_logger;
@@ -229,15 +230,54 @@ async fn main() -> Result<()> {
         },
         Some(Commands::Job { job_commands }) => match job_commands {
             Some(JobAction::List) => {
-                let tree = Tree::new("jobs[name]");
+                let tree = Tree::new("api/json?tree=jobs[name]");
                 let job_info = jenkins.job(tree).await?;
                 for job in job_info.jobs {
                     println!("{}", job.name);
+
+                    let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
+                    let inner_job = "".to_string();
+
+                    rec_walk(class.as_str(), &jenkins, job.name.as_str(), inner_job).await?;
                 }
             }
             None => todo!(),
         },
         None => todo!(),
+    }
+
+    Ok(())
+}
+
+#[async_recursion]
+async fn rec_walk<'t>(
+    class: &str,
+    jenkins: &Jenkins<'t>,
+    job_name: &str,
+    mut inner_job: String,
+) -> Result<()> {
+    if class == "folder" {
+        inner_job.push_str(format!("/job/{}", job_name).as_str());
+        let mut query = "/api/json?tree=jobs[name]".to_string();
+
+        query.insert_str(0, inner_job.as_str());
+        let tree = Tree::new(query.as_str());
+
+        println!("{query}");
+
+        let nested_job_info = jenkins.job(tree).await?;
+        for job in nested_job_info.jobs {
+            println!("{}", job.name);
+
+            let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
+            rec_walk(
+                class.as_str(),
+                &jenkins,
+                job.name.as_str(),
+                inner_job.clone(),
+            )
+            .await?;
+        }
     }
 
     Ok(())

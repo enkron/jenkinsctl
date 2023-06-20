@@ -11,6 +11,7 @@ edition = "2021"
 rust-version = "1.65"
 
 [dependencies]
+async-recursion = "1.0.4"
 base64 = "0.21.2"
 bytes = "1.4.0"
 clap = { version = "4.3.2", features = ["derive"] }
