@@ -95,48 +95,37 @@ impl<'x> Jenkins<'x> {
     }
 
     pub async fn shutdown(self, state: ShutdownState) -> Result<Response<Body>> {
-        let scheme = self.url.scheme().unwrap();
-        let authority = self.url.authority().unwrap();
         match state {
             ShutdownState::On { reason } => {
                 if !reason.is_empty() {
-                    let url = format!(
-                        "{scheme}://{authority}/quietDown?reason={}",
-                        encode(reason.as_str())
-                    )
-                    .parse::<hyper::Uri>()?;
+                    let url = format!("{}/quietDown?reason={}", self.url, encode(reason.as_str()))
+                        .parse::<hyper::Uri>()?;
                     return send_request(&url, self.user, self.pswd, Method::POST).await;
                 }
 
-                let url = format!("{}://{}/quietDown", scheme, authority).parse::<hyper::Uri>()?;
+                let url = format!("{}/quietDown", self.url).parse::<hyper::Uri>()?;
                 send_request(&url, self.user, self.pswd, Method::POST).await
             }
             ShutdownState::Off => {
-                let url =
-                    format!("{}://{}/cancelQuietDown", scheme, authority).parse::<hyper::Uri>()?;
+                let url = format!("{}/cancelQuietDown", self.url).parse::<hyper::Uri>()?;
                 send_request(&url, self.user, self.pswd, Method::POST).await
             }
         }
     }
 
     pub async fn restart(self, hard: bool) -> Result<Response<Body>> {
-        let scheme = self.url.scheme().unwrap();
-        let authority = self.url.authority().unwrap();
-
         if hard {
             println!("hard restart is activated");
-            let url = format!("{scheme}://{authority}/restart").parse::<hyper::Uri>()?;
+            let url = format!("{}/restart", self.url).parse::<hyper::Uri>()?;
             return send_request(&url, self.user, self.pswd, Method::POST).await;
         }
 
         println!("safe restart is activated");
-        let url = format!("{scheme}://{authority}/safeRestart").parse::<hyper::Uri>()?;
-        return send_request(&url, self.user, self.pswd, Method::POST).await;
+        let url = format!("{}/safeRestart", self.url).parse::<hyper::Uri>()?;
+        send_request(&url, self.user, self.pswd, Method::POST).await
     }
 
     pub async fn copy(self, service: CopyItem) -> Result<Response<Body>> {
-        let scheme = self.url.scheme().unwrap();
-        let authority = self.url.authority().unwrap();
         match service {
             CopyItem::Job { from, to } => {
                 if to.contains('/') {
@@ -144,7 +133,8 @@ impl<'x> Jenkins<'x> {
                     std::process::exit(1);
                 }
                 let url = format!(
-                    "{scheme}://{authority}/createItem?from={}&mode=copy&name={}",
+                    "{}/createItem?from={}&mode=copy&name={}",
+                    self.url,
                     encode(from.as_str()),
                     encode(to.as_str())
                 )
@@ -153,7 +143,8 @@ impl<'x> Jenkins<'x> {
             }
             CopyItem::View { from, to } => {
                 let url = format!(
-                    "{scheme}://{authority}/createView?from={}&mode=copy&name={}",
+                    "{}/createView?from={}&mode=copy&name={}",
+                    self.url,
                     encode(from.as_str()),
                     encode(to.as_str())
                 )
@@ -164,10 +155,7 @@ impl<'x> Jenkins<'x> {
     }
 
     pub async fn node(&self) -> Result<NodesInfo> {
-        let scheme = self.url.scheme().unwrap();
-        let authority = self.url.authority().unwrap();
-
-        let url = format!("{scheme}://{authority}/computer/api/json").parse::<hyper::Uri>()?;
+        let url = format!("{}/computer/api/json", self.url).parse::<hyper::Uri>()?;
 
         let json_data = get_json_data(&url, self.user, self.pswd).await?;
         let node: NodesInfo = serde_json::from_slice(json_data.into_inner().as_slice())?;
@@ -176,11 +164,7 @@ impl<'x> Jenkins<'x> {
     }
 
     pub async fn job<'t>(&self, tree: Tree<'t>) -> Result<JobInfo> {
-        let scheme = self.url.scheme().unwrap();
-        let authority = self.url.authority().unwrap();
-
-        let url =
-            format!("{scheme}://{authority}/api/json?tree={}", tree.query).parse::<hyper::Uri>()?;
+        let url = format!("{}/api/json?tree={}", self.url, tree.query).parse::<hyper::Uri>()?;
 
         let json_data = get_json_data(&url, self.user, self.pswd).await?;
         let job: JobInfo = serde_json::from_slice(json_data.into_inner().as_slice())?;
