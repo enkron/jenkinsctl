@@ -230,15 +230,13 @@ async fn main() -> Result<()> {
         },
         Some(Commands::Job { job_commands }) => match job_commands {
             Some(JobAction::List) => {
-                let tree = Tree::new("api/json?tree=jobs[name]");
+                let tree = Tree::new("api/json?tree=jobs[fullDisplayName,fullName,name]");
                 let job_info = jenkins.job(tree).await?;
                 for job in job_info.jobs {
-                    println!("{}", job.name);
-
                     let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
                     let inner_job = "".to_string();
 
-                    rec_walk(class.as_str(), &jenkins, job.name.as_str(), inner_job).await?;
+                    rec_walk(class.as_str(), &jenkins, job.full_name.as_str(), inner_job).await?;
                 }
             }
             None => todo!(),
@@ -258,16 +256,28 @@ async fn rec_walk<'t>(
 ) -> Result<()> {
     if class == "folder" {
         inner_job.push_str(format!("/job/{}", job_name).as_str());
-        let mut query = "/api/json?tree=jobs[name]".to_string();
+        let mut query = "/api/json?tree=jobs[fullDisplayName,fullName,name]".to_string();
 
         query.insert_str(0, inner_job.as_str());
         let tree = Tree::new(query.as_str());
 
-        println!("{query}");
-
         let nested_job_info = jenkins.job(tree).await?;
         for job in nested_job_info.jobs {
-            println!("{}", job.name);
+            let job_path = std::path::Path::new(job.full_name.as_str()).iter();
+            let last_element = job_path.clone().last().unwrap();
+            for e in job_path {
+                if e == last_element {
+                    //println!("{}", e.to_str().unwrap());
+                    print!("");
+                } else {
+                    print!("{} => ", e.to_str().unwrap());
+                }
+            }
+
+            //println!(
+            //    "\x1b[94;1m{}\x1b[0m",
+            //    job.full_name.rsplit_once("/").unwrap().0
+            //);
 
             let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
             rec_walk(
@@ -278,6 +288,8 @@ async fn rec_walk<'t>(
             )
             .await?;
         }
+    } else {
+        println!("{job_name}");
     }
 
     Ok(())
