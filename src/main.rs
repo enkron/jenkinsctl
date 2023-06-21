@@ -263,21 +263,18 @@ async fn rec_walk<'t>(
 
         let nested_job_info = jenkins.job(tree).await?;
         for job in nested_job_info.jobs {
-            let job_path = std::path::Path::new(job.full_name.as_str()).iter();
-            let last_element = job_path.clone().last().unwrap();
-            for e in job_path {
-                if e == last_element {
-                    //println!("{}", e.to_str().unwrap());
-                    print!("");
-                } else {
-                    print!("{} => ", e.to_str().unwrap());
-                }
-            }
+            let mut job_path = std::path::Path::new(job.full_name.as_str())
+                .iter()
+                .map(|e| e.to_str().unwrap())
+                .collect::<Vec<_>>();
+            job_path.pop().unwrap();
 
-            //println!(
-            //    "\x1b[94;1m{}\x1b[0m",
-            //    job.full_name.rsplit_once("/").unwrap().0
-            //);
+            for e in &job_path {
+                if job_path.len() == 1 {
+                    continue;
+                }
+                print!("\x1b[94;1m{e}\x1b[0m => ");
+            }
 
             let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
             rec_walk(
