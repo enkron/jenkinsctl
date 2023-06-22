@@ -181,7 +181,16 @@ impl<'x> Jenkins<'x> {
         let url = if params.is_empty() {
             format!("{}/{}build?delay=0sec", self.url, path_components).parse::<hyper::Uri>()?
         } else {
-            todo!()
+            let params = params
+                .split(',')
+                .map(|p| format!("&{}", p))
+                .collect::<String>();
+
+            format!(
+                "{}/{}buildWithParameters?delay=0sec{}",
+                self.url, path_components, params
+            )
+            .parse::<hyper::Uri>()?
         };
         send_request(&url, self.user, self.pswd, Method::POST).await
     }
