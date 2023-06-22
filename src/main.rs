@@ -268,15 +268,28 @@ async fn rec_walk<'t>(
                 .map(|e| e.to_str().unwrap())
                 .collect::<Vec<_>>();
             job_path.pop().unwrap();
+            let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
 
             for e in &job_path {
-                if job_path.len() == 1 {
-                    continue;
+                if job_path.len() > 1 {
+                    print!("\x1b[94;1m{e}\x1b[0m => ");
+                } else {
+                    let root_job_path = std::path::Path::new(job.full_name.as_str());
+                    let root_class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
+                    if root_class == "folder" {
+                        println!(
+                            "\x1b[94;1m{}\x1b[0m",
+                            root_job_path.parent().unwrap().display()
+                        );
+                    } else {
+                        print!(
+                            "\x1b[94;1m{}\x1b[0m => ",
+                            root_job_path.parent().unwrap().display()
+                        );
+                    }
                 }
-                print!("\x1b[94;1m{e}\x1b[0m => ");
             }
 
-            let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
             rec_walk(
                 class.as_str(),
                 &jenkins,
