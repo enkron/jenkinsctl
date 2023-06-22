@@ -135,6 +135,65 @@ enum ShowAction {
 enum JobAction {
     #[command(aliases = ["ls"], about = "List all jobs")]
     List,
+    #[command(aliases = ["b"], about = "Build specific job")]
+    Build {
+        #[arg(index = 1, help = "Job path (format: path/to/jenkins/job)")]
+        job: String,
+        #[arg(
+            index = 2,
+            help = "List of parameters (format: param=value,...,param=value)",
+            required = false,
+            default_value = "",
+            hide_default_value = true
+        )]
+        params: String,
+    },
+}
+
+#[async_recursion]
+async fn rec_walk<'t>(
+    class: &str,
+    jenkins: &Jenkins<'t>,
+    job_name: &str,
+    mut inner_job: String,
+) -> Result<()> {
+    if class == "folder" {
+        inner_job.push_str(format!("/job/{}", job_name).as_str());
+        let mut query = "/api/json?tree=jobs[fullDisplayName,fullName,name]".to_string();
+
+        query.insert_str(0, inner_job.as_str());
+        let tree = Tree::new(query.as_str());
+
+        let nested_job_info = jenkins.job(tree).await?;
+        for job in nested_job_info.jobs {
+            let mut job_path = std::path::Path::new(job.full_name.as_str())
+                .iter()
+                .map(|e| e.to_str().unwrap())
+                .collect::<Vec<_>>();
+            job_path.pop().unwrap();
+            let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
+
+            for e in &job_path {
+                if class != "folder" {
+                    print!("\x1b[94;1m{e}\x1b[0m => ");
+                } else {
+                    continue;
+                }
+            }
+
+            rec_walk(
+                class.as_str(),
+                &jenkins,
+                job.name.as_str(),
+                inner_job.clone(),
+            )
+            .await?;
+        }
+    } else {
+        println!("{job_name}");
+    }
+
+    Ok(())
 }
 
 #[tokio::main]
@@ -239,6 +298,9 @@ async fn main() -> Result<()> {
                     rec_walk(class.as_str(), &jenkins, job.full_name.as_str(), inner_job).await?;
                 }
             }
+            Some(JobAction::Build { job, params }) => {
+                jenkins.build(job.as_str(), params).await?;
+            }
             None => todo!(),
         },
         None => todo!(),
@@ -246,49 +308,13 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-
-#[async_recursion]
-async fn rec_walk<'t>(
-    class: &str,
-    jenkins: &Jenkins<'t>,
-    job_name: &str,
-    mut inner_job: String,
-) -> Result<()> {
-    if class == "folder" {
-        inner_job.push_str(format!("/job/{}", job_name).as_str());
-        let mut query = "/api/json?tree=jobs[fullDisplayName,fullName,name]".to_string();
-
-        query.insert_str(0, inner_job.as_str());
-        let tree = Tree::new(query.as_str());
-
-        let nested_job_info = jenkins.job(tree).await?;
-        for job in nested_job_info.jobs {
-            let mut job_path = std::path::Path::new(job.full_name.as_str())
-                .iter()
-                .map(|e| e.to_str().unwrap())
-                .collect::<Vec<_>>();
-            job_path.pop().unwrap();
-            let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
-
-            for e in &job_path {
-                if class != "folder" {
-                    print!("\x1b[94;1m{e}\x1b[0m => ");
-                } else {
-                    continue;
-                }
-            }
-
-            rec_walk(
-                class.as_str(),
-                &jenkins,
-                job.name.as_str(),
-                inner_job.clone(),
-            )
-            .await?;
-        }
-    } else {
-        println!("{job_name}");
-    }
-
-    Ok(())
-}
+//
+// job build <JOB_NAME> <PARAM_LIST>
+// PARAM_LIST: "param=value,param=value,param=value..."
+// JOB_NAME (type std::path:Path) is required: "/path/to/job"
+// PARAM_LIST (type String), if PARAM_LIST id empty execute build  without parameters
+//
+// parse JOB_NAME by path elements and form the api request: job/directory/job/directory/.../job/JOB_NAME
+//
+// parse PARAM_LIST job/JOB_NAME/buildWithParameters?param=value&param=value&...&param=value
+//

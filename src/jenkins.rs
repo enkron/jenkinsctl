@@ -171,4 +171,18 @@ impl<'x> Jenkins<'x> {
 
         Ok(job_info)
     }
+
+    pub async fn build(self, job_path: &str, params: String) -> Result<Response<Body>> {
+        let path_components = std::path::Path::new(job_path)
+            .components()
+            .map(|e| format!("job/{}/", e.as_os_str().to_str().unwrap()))
+            .collect::<String>();
+
+        let url = if params.is_empty() {
+            format!("{}/{}build?delay=0sec", self.url, path_components).parse::<hyper::Uri>()?
+        } else {
+            todo!()
+        };
+        send_request(&url, self.user, self.pswd, Method::POST).await
+    }
 }
