@@ -135,7 +135,10 @@ enum ShowAction {
 enum JobAction {
     #[command(aliases = ["ls"], about = "List all jobs")]
     List,
-    #[command(aliases = ["b"], about = "Build specific job")]
+    #[command(
+        aliases = ["b"],
+        about = "Build a job (use '-' as param list to build with defaults)"
+    )]
     Build {
         #[arg(index = 1, help = "Job path (format: path/to/jenkins/job)")]
         job: String,
@@ -308,13 +311,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-//
-// job build <JOB_NAME> <PARAM_LIST>
-// PARAM_LIST: "param=value,param=value,param=value..."
-// JOB_NAME (type std::path:Path) is required: "/path/to/job"
-// PARAM_LIST (type String), if PARAM_LIST id empty execute build  without parameters
-//
-// parse JOB_NAME by path elements and form the api request: job/directory/job/directory/.../job/JOB_NAME
-//
-// parse PARAM_LIST job/JOB_NAME/buildWithParameters?param=value&param=value&...&param=value
-//

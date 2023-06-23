@@ -178,19 +178,26 @@ impl<'x> Jenkins<'x> {
             .map(|e| format!("job/{}/", e.as_os_str().to_str().unwrap()))
             .collect::<String>();
 
-        let url = if params.is_empty() {
-            format!("{}/{}build?delay=0sec", self.url, path_components).parse::<hyper::Uri>()?
-        } else {
-            let params = params
-                .split(',')
-                .map(|p| format!("&{}", p))
-                .collect::<String>();
-
-            format!(
-                "{}/{}buildWithParameters?delay=0sec{}",
-                self.url, path_components, params
+        let url = match params.as_str() {
+            "" => {
+                format!("{}/{}build?delay=0sec", self.url, path_components).parse::<hyper::Uri>()?
+            }
+            "-" => format!(
+                "{}/{}buildWithParameters?delay=0sec",
+                self.url, path_components
             )
-            .parse::<hyper::Uri>()?
+            .parse::<hyper::Uri>()?,
+            _ => {
+                let params = params
+                    .split(',')
+                    .map(|p| format!("&{}", p))
+                    .collect::<String>();
+                format!(
+                    "{}/{}buildWithParameters?delay=0sec{}",
+                    self.url, path_components, params
+                )
+                .parse::<hyper::Uri>()?
+            }
         };
         send_request(&url, self.user, self.pswd, Method::POST).await
     }
