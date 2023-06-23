@@ -17,4 +17,6 @@ Current functionality includes:
 	- show  Show node information
 	- list  List all (with optional status information)
 - job
-    - list  Recursively list all the jobs in an instance
+    - list    Recursively list all the jobs in an instance
+    - build   Build a job (use '-' as param list to build with defaults)
+    - remove  Remove a job (use with caution, the action is permanent)
