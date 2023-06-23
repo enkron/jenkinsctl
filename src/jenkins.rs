@@ -163,7 +163,7 @@ impl<'x> Jenkins<'x> {
         Ok(node_info)
     }
 
-    pub async fn job<'t>(&self, tree: Tree<'t>) -> Result<JobInfo> {
+    pub async fn system<'t>(&self, tree: Tree<'t>) -> Result<JobInfo> {
         let url = format!("{}/{}", self.url, tree.query).parse::<hyper::Uri>()?;
 
         let json_data = get_json_data(&url, self.user, self.pswd).await?;

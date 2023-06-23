@@ -175,7 +175,7 @@ async fn rec_walk<'t>(
         query.insert_str(0, inner_job.as_str());
         let tree = Tree::new(query.as_str());
 
-        let nested_job_info = jenkins.job(tree).await?;
+        let nested_job_info = jenkins.system(tree).await?;
         for job in nested_job_info.jobs {
             let mut job_path = std::path::Path::new(job.full_name.as_str())
                 .iter()
@@ -301,7 +301,7 @@ async fn main() -> Result<()> {
         Some(Commands::Job { job_commands }) => match job_commands {
             Some(JobAction::List) => {
                 let tree = Tree::new("api/json?tree=jobs[fullDisplayName,fullName,name]");
-                let job_info = jenkins.job(tree).await?;
+                let job_info = jenkins.system(tree).await?;
                 for job in job_info.jobs {
                     let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
                     let inner_job = "".to_string();
