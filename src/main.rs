@@ -151,6 +151,14 @@ enum JobAction {
         )]
         params: String,
     },
+    #[command(
+        aliases = ["rm", "delete", "del"],
+        about = "Remove a job (use with caution, the action is permanent)"
+    )]
+    Remove {
+        #[arg(index = 1, help = "Job path (format: path/to/jenkins/job)")]
+        job: String,
+    },
 }
 
 #[async_recursion]
@@ -303,6 +311,9 @@ async fn main() -> Result<()> {
             }
             Some(JobAction::Build { job, params }) => {
                 jenkins.build(job.as_str(), params).await?;
+            }
+            Some(JobAction::Remove { job }) => {
+                jenkins.remove(job.as_str()).await?;
             }
             None => todo!(),
         },

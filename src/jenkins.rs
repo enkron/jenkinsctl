@@ -201,4 +201,15 @@ impl<'x> Jenkins<'x> {
         };
         send_request(&url, self.user, self.pswd, Method::POST).await
     }
+
+    pub async fn remove(self, job_path: &str) -> Result<Response<Body>> {
+        let path_components = std::path::Path::new(job_path)
+            .components()
+            .map(|e| format!("job/{}/", e.as_os_str().to_str().unwrap()))
+            .collect::<String>();
+
+        let url = format!("{}/{}", self.url, path_components).parse::<hyper::Uri>()?;
+
+        send_request(&url, self.user, self.pswd, Method::DELETE).await
+    }
 }
