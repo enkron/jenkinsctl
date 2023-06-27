@@ -1,5 +1,5 @@
 # jenkinsctl
-Jenkins manager tool
+Jenkins manager
 
 The project aims to wrap Jenkins json api and some post requests which
 can be performed on Jenkins parts (such as 'delete node').
