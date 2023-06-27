@@ -8,6 +8,7 @@ mod jenkins;
 mod job;
 mod node;
 use crate::jenkins::{Jenkins, Result, Tree};
+use crate::job::JobInfo;
 
 const JENKINS_URL: &str = "JENKINS_URL";
 const JENKINS_USER: &str = "JENKINS_USER";
@@ -174,8 +175,11 @@ async fn rec_walk<'t>(
 
         query.insert_str(0, inner_job.as_str());
         let tree = Tree::new(query.as_str());
+        let json_data = jenkins.get_json_data(tree).await?;
 
-        let nested_job_info = jenkins.system(tree).await?;
+        let nested_job_info = jenkins
+            .system::<JobInfo>(json_data.get_ref().as_slice())
+            .await?;
         for job in nested_job_info.jobs {
             let mut job_path = std::path::Path::new(job.full_name.as_str())
                 .iter()
@@ -301,7 +305,12 @@ async fn main() -> Result<()> {
         Some(Commands::Job { job_commands }) => match job_commands {
             Some(JobAction::List) => {
                 let tree = Tree::new("api/json?tree=jobs[fullDisplayName,fullName,name]");
-                let job_info = jenkins.system(tree).await?;
+                let json_data = jenkins.get_json_data(tree).await?;
+
+                let job_info = jenkins
+                    .system::<JobInfo>(json_data.get_ref().as_slice())
+                    .await?;
+
                 for job in job_info.jobs {
                     let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
                     let inner_job = "".to_string();
