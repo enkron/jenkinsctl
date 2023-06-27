@@ -9,6 +9,7 @@ mod job;
 mod node;
 use crate::jenkins::{Jenkins, Result, Tree};
 use crate::job::JobInfo;
+use crate::node::NodesInfo;
 
 const JENKINS_URL: &str = "JENKINS_URL";
 const JENKINS_USER: &str = "JENKINS_USER";
@@ -261,22 +262,30 @@ async fn main() -> Result<()> {
         Some(Commands::Node { node_commands }) => match node_commands {
             Some(NodeAction::Show { show_commands }) => match show_commands {
                 Some(ShowAction::Raw) => {
-                    let node_info = jenkins.node().await?;
+                    let tree = Tree::new("computer/api/json");
+                    let json_data = jenkins.get_json_data(tree).await?;
+                    let node_info = jenkins
+                        .system::<NodesInfo>(json_data.get_ref().as_slice())
+                        .await?;
                     println!("{:#?}", node_info);
                 }
                 Some(ShowAction::Executors { total, busy }) => {
+                    let tree = Tree::new("computer/api/json");
+                    let json_data = jenkins.get_json_data(tree).await?;
+
+                    let node_info = jenkins
+                        .system::<NodesInfo>(json_data.get_ref().as_slice())
+                        .await?;
+
                     if total && !busy {
-                        let node_info = jenkins.node().await?;
                         println!("Total number of executors: {}", node_info.total_executors);
                     }
 
                     if busy && !total {
-                        let node_info = jenkins.node().await?;
                         println!("Busy executors: {}", node_info.busy_executors);
                     }
 
                     if !total && !busy {
-                        let node_info = jenkins.node().await?;
                         println!("Total number of executors: {}", node_info.total_executors);
                         println!("Busy executors: {}", node_info.busy_executors);
                     }
@@ -284,8 +293,14 @@ async fn main() -> Result<()> {
                 None => todo!(),
             },
             Some(NodeAction::List { status }) => {
+                let tree = Tree::new("computer/api/json");
+                let json_data = jenkins.get_json_data(tree).await?;
+
+                let node_info = jenkins
+                    .system::<NodesInfo>(json_data.get_ref().as_slice())
+                    .await?;
+
                 if status {
-                    let node_info = jenkins.node().await?;
                     for node in node_info.computer {
                         if node.offline {
                             println!("{:.<40}\x1b[31moffline\x1b[0m", node.display_name);
@@ -294,7 +309,6 @@ async fn main() -> Result<()> {
                         }
                     }
                 } else {
-                    let node_info = jenkins.node().await?;
                     for node in node_info.computer {
                         println!("{}", node.display_name);
                     }

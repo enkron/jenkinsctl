@@ -7,7 +7,6 @@ use serde_json;
 use tokio::io::{self, AsyncWriteExt as _};
 use urlencoding::encode;
 
-use crate::node::NodesInfo;
 use crate::{CopyItem, ShutdownState};
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -153,14 +152,6 @@ impl<'x> Jenkins<'x> {
                 Self::send_request(&url, self.user, self.pswd, Method::POST).await
             }
         }
-    }
-
-    pub async fn node(&self) -> Result<NodesInfo> {
-        let tree = Tree::new("computer/api/json");
-        let json_data = self.get_json_data(tree).await?;
-        let node_info: NodesInfo = serde_json::from_slice(json_data.into_inner().as_slice())?;
-
-        Ok(node_info)
     }
 
     pub async fn system<'de, I>(&self, json_data: &'de [u8]) -> Result<I>
