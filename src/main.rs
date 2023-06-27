@@ -9,7 +9,7 @@ mod job;
 mod node;
 use crate::jenkins::{Jenkins, Result, Tree};
 use crate::job::JobInfo;
-use crate::node::NodesInfo;
+use crate::node::NodeInfo;
 
 const JENKINS_URL: &str = "JENKINS_URL";
 const JENKINS_USER: &str = "JENKINS_USER";
@@ -265,7 +265,7 @@ async fn main() -> Result<()> {
                     let tree = Tree::new("computer/api/json");
                     let json_data = jenkins.get_json_data(tree).await?;
                     let node_info = jenkins
-                        .system::<NodesInfo>(json_data.get_ref().as_slice())
+                        .system::<NodeInfo>(json_data.get_ref().as_slice())
                         .await?;
                     println!("{:#?}", node_info);
                 }
@@ -274,7 +274,7 @@ async fn main() -> Result<()> {
                     let json_data = jenkins.get_json_data(tree).await?;
 
                     let node_info = jenkins
-                        .system::<NodesInfo>(json_data.get_ref().as_slice())
+                        .system::<NodeInfo>(json_data.get_ref().as_slice())
                         .await?;
 
                     if total && !busy {
@@ -297,7 +297,7 @@ async fn main() -> Result<()> {
                 let json_data = jenkins.get_json_data(tree).await?;
 
                 let node_info = jenkins
-                    .system::<NodesInfo>(json_data.get_ref().as_slice())
+                    .system::<NodeInfo>(json_data.get_ref().as_slice())
                     .await?;
 
                 if status {

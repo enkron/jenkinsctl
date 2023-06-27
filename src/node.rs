@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct NodesInfo {
+pub struct NodeInfo {
     pub busy_executors: u32,
     pub computer: Vec<Computer>,
     display_name: String,
