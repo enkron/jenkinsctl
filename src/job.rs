@@ -14,3 +14,18 @@ pub struct Jobs {
     pub full_name: String,
     pub name: String,
 }
+
+#[derive(Deserialize, Debug, Serialize)]
+pub struct BuildInfo {
+    #[serde(rename = "_class")]
+    class: String,
+    pub builds: Vec<Build>,
+}
+
+#[derive(Deserialize, Debug, Serialize)]
+pub struct Build {
+    #[serde(rename = "_class")]
+    class: String,
+    pub number: u32,
+    url: String,
+}

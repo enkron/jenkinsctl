@@ -8,7 +8,7 @@ mod jenkins;
 mod job;
 mod node;
 use crate::jenkins::{Jenkins, Result, Tree};
-use crate::job::JobInfo;
+use crate::job::{BuildInfo, JobInfo};
 use crate::node::NodeInfo;
 
 const JENKINS_URL: &str = "JENKINS_URL";
@@ -136,7 +136,16 @@ enum ShowAction {
 #[derive(Subcommand)]
 enum JobAction {
     #[command(aliases = ["ls"], about = "List all jobs")]
-    List,
+    List {
+        #[arg(
+            index = 1,
+            help = "List the builds for specific job",
+            required = false,
+            default_value = "",
+            hide_default_value = true
+        )]
+        job: String,
+    },
     #[command(
         aliases = ["b"],
         about = "Build a job (use '-' as param list to build with defaults)"
@@ -317,19 +326,34 @@ async fn main() -> Result<()> {
             None => todo!(),
         },
         Some(Commands::Job { job_commands }) => match job_commands {
-            Some(JobAction::List) => {
-                let tree = Tree::new("api/json?tree=jobs[fullDisplayName,fullName,name]");
-                let json_data = jenkins.get_json_data(tree).await?;
+            Some(JobAction::List { job }) => {
+                if job.is_empty() {
+                    let tree = Tree::new("api/json?tree=jobs[fullDisplayName,fullName,name]");
+                    let json_data = jenkins.get_json_data(tree).await?;
 
-                let job_info = jenkins
-                    .system::<JobInfo>(json_data.get_ref().as_slice())
-                    .await?;
+                    let job_info = jenkins
+                        .system::<JobInfo>(json_data.get_ref().as_slice())
+                        .await?;
 
-                for job in job_info.jobs {
-                    let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
-                    let inner_job = "".to_string();
+                    for job in job_info.jobs {
+                        let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
+                        let inner_job = "".to_string();
 
-                    rec_walk(class.as_str(), &jenkins, job.full_name.as_str(), inner_job).await?;
+                        rec_walk(class.as_str(), &jenkins, job.full_name.as_str(), inner_job)
+                            .await?;
+                    }
+                } else {
+                    let query = format!("job/{job}/api/json?tree=builds[number,url]");
+                    let tree = Tree::new(&query);
+                    let json_data = jenkins.get_json_data(tree).await?;
+
+                    let build_info = jenkins
+                        .system::<BuildInfo>(json_data.get_ref().as_slice())
+                        .await?;
+
+                    for build in build_info.builds {
+                        println!("{}", build.number);
+                    }
                 }
             }
             Some(JobAction::Build { job, params }) => {
