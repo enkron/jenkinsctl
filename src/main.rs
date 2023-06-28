@@ -343,7 +343,17 @@ async fn main() -> Result<()> {
                             .await?;
                     }
                 } else {
-                    let query = format!("job/{job}/api/json?tree=builds[number,url]");
+                    let mut query = "api/json?tree=builds[number,url]".to_string();
+                    let mut job_path = std::path::Path::new(&job)
+                        .iter()
+                        .map(|e| e.to_str().unwrap())
+                        .collect::<Vec<_>>();
+                    job_path.reverse();
+
+                    for e in job_path {
+                        query.insert_str(0, format!("job/{e}/").as_str());
+                    }
+
                     let tree = Tree::new(&query);
                     let json_data = jenkins.get_json_data(tree).await?;
 
