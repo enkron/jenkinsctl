@@ -11,17 +11,32 @@ use crate::{CopyItem, ShutdownState};
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-pub struct Tree<'t> {
-    pub query: &'t str,
+pub struct Tree {
+    pub query: String,
 }
 
-impl<'t> Tree<'t> {
-    pub fn new(query: &'t str) -> Self {
+impl Tree {
+    pub fn new(query: String) -> Self {
+        Self { query }
+    }
+
+    pub fn build_path(self, path: &str) -> Self {
+        let mut query = self.query;
+        let mut job_path = std::path::Path::new(&path)
+            .iter()
+            .map(|e| e.to_str().unwrap())
+            .collect::<Vec<_>>();
+        job_path.reverse();
+
+        for component in job_path {
+            query.insert_str(0, format!("job/{component}/").as_str());
+        }
+
         Self { query }
     }
 }
 
-impl<'t> std::fmt::Display for Tree<'t> {
+impl std::fmt::Display for Tree {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self)
     }
@@ -78,7 +93,7 @@ impl<'x> Jenkins<'x> {
         Ok(res)
     }
 
-    pub async fn get_json_data<'t>(&self, tree: Tree<'t>) -> Result<io::BufWriter<Vec<u8>>> {
+    pub async fn get_json_data(&self, tree: Tree) -> Result<io::BufWriter<Vec<u8>>> {
         let url = format!("{}/{}", self.url, tree.query).parse::<hyper::Uri>()?;
         let mut res = Self::send_request(&url, self.user, self.pswd, Method::GET).await?;
 

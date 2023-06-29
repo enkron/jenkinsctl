@@ -184,7 +184,7 @@ async fn rec_walk<'t>(
         let mut query = "/api/json?tree=jobs[fullDisplayName,fullName,name]".to_string();
 
         query.insert_str(0, inner_job.as_str());
-        let tree = Tree::new(query.as_str());
+        let tree = Tree::new(query);
         let json_data = jenkins.get_json_data(tree).await?;
 
         let nested_job_info = jenkins
@@ -271,7 +271,7 @@ async fn main() -> Result<()> {
         Some(Commands::Node { node_commands }) => match node_commands {
             Some(NodeAction::Show { show_commands }) => match show_commands {
                 Some(ShowAction::Raw) => {
-                    let tree = Tree::new("computer/api/json");
+                    let tree = Tree::new("computer/api/json".to_string());
                     let json_data = jenkins.get_json_data(tree).await?;
                     let node_info = jenkins
                         .system::<NodeInfo>(json_data.get_ref().as_slice())
@@ -279,7 +279,7 @@ async fn main() -> Result<()> {
                     println!("{:#?}", node_info);
                 }
                 Some(ShowAction::Executors { total, busy }) => {
-                    let tree = Tree::new("computer/api/json");
+                    let tree = Tree::new("computer/api/json".to_string());
                     let json_data = jenkins.get_json_data(tree).await?;
 
                     let node_info = jenkins
@@ -302,7 +302,7 @@ async fn main() -> Result<()> {
                 None => todo!(),
             },
             Some(NodeAction::List { status }) => {
-                let tree = Tree::new("computer/api/json");
+                let tree = Tree::new("computer/api/json".to_string());
                 let json_data = jenkins.get_json_data(tree).await?;
 
                 let node_info = jenkins
@@ -328,7 +328,8 @@ async fn main() -> Result<()> {
         Some(Commands::Job { job_commands }) => match job_commands {
             Some(JobAction::List { job }) => {
                 if job.is_empty() {
-                    let tree = Tree::new("api/json?tree=jobs[fullDisplayName,fullName,name]");
+                    let tree =
+                        Tree::new("api/json?tree=jobs[fullDisplayName,fullName,name]".to_string());
                     let json_data = jenkins.get_json_data(tree).await?;
 
                     let job_info = jenkins
@@ -343,20 +344,11 @@ async fn main() -> Result<()> {
                             .await?;
                     }
                 } else {
-                    let mut query = "api/json?tree=builds[number,url],nextBuildNumber".to_string();
-                    let mut job_path = std::path::Path::new(&job)
-                        .iter()
-                        .map(|e| e.to_str().unwrap())
-                        .collect::<Vec<_>>();
-                    job_path.reverse();
+                    let tree =
+                        Tree::new("api/json?tree=builds[number,url],nextBuildNumber".to_string())
+                            .build_path(&job);
 
-                    for component in job_path {
-                        query.insert_str(0, format!("job/{component}/").as_str());
-                    }
-
-                    let tree = Tree::new(&query);
                     let json_data = jenkins.get_json_data(tree).await?;
-
                     let build_info = jenkins
                         .system::<BuildInfo>(json_data.get_ref().as_slice())
                         .await?;
@@ -367,29 +359,16 @@ async fn main() -> Result<()> {
                 }
             }
             Some(JobAction::Build { job, params }) => {
-                let mut query = "api/json?tree=builds[number,url],nextBuildNumber".to_string();
-                let mut job_path = std::path::Path::new(&job)
-                    .iter()
-                    .map(|e| e.to_str().unwrap())
-                    .collect::<Vec<_>>();
-                job_path.reverse();
+                let tree =
+                    Tree::new("api/json?tree=builds[number,url],nextBuildNumber".to_string())
+                        .build_path(&job);
 
-                for component in &job_path {
-                    query.insert_str(0, format!("job/{component}/").as_str());
-                }
-
-                let tree = Tree::new(&query);
                 let json_data = jenkins.get_json_data(tree).await?;
-
                 let build_info = jenkins
                     .system::<BuildInfo>(json_data.get_ref().as_slice())
                     .await?;
 
-                log::info!(
-                    "started job {} {}",
-                    job_path.first().unwrap(),
-                    build_info.next_build_number
-                );
+                log::info!("started build {}", build_info.next_build_number);
 
                 jenkins.build(job.as_str(), params).await?;
             }
