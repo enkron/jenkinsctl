@@ -12,7 +12,7 @@ use crate::{CopyItem, ShutdownState};
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 pub struct Tree {
-    pub query: String,
+    query: String,
 }
 
 impl Tree {
