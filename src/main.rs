@@ -183,7 +183,7 @@ async fn rec_walk<'t>(
         inner_job.push_str(format!("/job/{}", job_name).as_str());
         let mut query = "/api/json?tree=jobs[fullDisplayName,fullName,name]".to_string();
 
-        query.insert_str(0, inner_job.as_str());
+        query.insert_str(0, &inner_job);
         let tree = Tree::new(query);
         let json_data = jenkins.get_json_data(tree).await?;
 
@@ -206,13 +206,7 @@ async fn rec_walk<'t>(
                 }
             }
 
-            rec_walk(
-                class.as_str(),
-                &jenkins,
-                job.name.as_str(),
-                inner_job.clone(),
-            )
-            .await?;
+            rec_walk(&class, &jenkins, job.name.as_str(), inner_job.clone()).await?;
         }
     } else {
         println!("{job_name}");
@@ -244,7 +238,7 @@ async fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    let jenkins = Jenkins::new(user.as_str(), token.as_str(), url.as_str());
+    let jenkins = Jenkins::new(&user, &token, &url);
 
     match args.commands {
         Some(Commands::Shutdown { shutdown_commands }) => match shutdown_commands {
@@ -340,8 +334,7 @@ async fn main() -> Result<()> {
                         let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
                         let inner_job = "".to_string();
 
-                        rec_walk(class.as_str(), &jenkins, job.full_name.as_str(), inner_job)
-                            .await?;
+                        rec_walk(&class, &jenkins, job.full_name.as_str(), inner_job).await?;
                     }
                 } else {
                     let tree =
@@ -370,10 +363,10 @@ async fn main() -> Result<()> {
 
                 log::info!("started build {}", build_info.next_build_number);
 
-                jenkins.build(job.as_str(), params).await?;
+                jenkins.build(&job, params).await?;
             }
             Some(JobAction::Remove { job }) => {
-                jenkins.remove(job.as_str()).await?;
+                jenkins.remove(&job).await?;
             }
             None => todo!(),
         },
