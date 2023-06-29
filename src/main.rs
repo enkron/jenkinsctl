@@ -343,15 +343,15 @@ async fn main() -> Result<()> {
                             .await?;
                     }
                 } else {
-                    let mut query = "api/json?tree=builds[number,url]".to_string();
+                    let mut query = "api/json?tree=builds[number,url],nextBuildNumber".to_string();
                     let mut job_path = std::path::Path::new(&job)
                         .iter()
                         .map(|e| e.to_str().unwrap())
                         .collect::<Vec<_>>();
                     job_path.reverse();
 
-                    for e in job_path {
-                        query.insert_str(0, format!("job/{e}/").as_str());
+                    for component in job_path {
+                        query.insert_str(0, format!("job/{component}/").as_str());
                     }
 
                     let tree = Tree::new(&query);
@@ -367,6 +367,30 @@ async fn main() -> Result<()> {
                 }
             }
             Some(JobAction::Build { job, params }) => {
+                let mut query = "api/json?tree=builds[number,url],nextBuildNumber".to_string();
+                let mut job_path = std::path::Path::new(&job)
+                    .iter()
+                    .map(|e| e.to_str().unwrap())
+                    .collect::<Vec<_>>();
+                job_path.reverse();
+
+                for component in &job_path {
+                    query.insert_str(0, format!("job/{component}/").as_str());
+                }
+
+                let tree = Tree::new(&query);
+                let json_data = jenkins.get_json_data(tree).await?;
+
+                let build_info = jenkins
+                    .system::<BuildInfo>(json_data.get_ref().as_slice())
+                    .await?;
+
+                log::info!(
+                    "started job {} {}",
+                    job_path.first().unwrap(),
+                    build_info.next_build_number
+                );
+
                 jenkins.build(job.as_str(), params).await?;
             }
             Some(JobAction::Remove { job }) => {

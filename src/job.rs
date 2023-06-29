@@ -16,10 +16,12 @@ pub struct Jobs {
 }
 
 #[derive(Deserialize, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BuildInfo {
     #[serde(rename = "_class")]
     class: String,
     pub builds: Vec<Build>,
+    pub next_build_number: u32,
 }
 
 #[derive(Deserialize, Debug, Serialize)]

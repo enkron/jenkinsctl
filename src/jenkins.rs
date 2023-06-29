@@ -163,7 +163,7 @@ impl<'x> Jenkins<'x> {
         Ok(info)
     }
 
-    pub async fn build(self, job_path: &str, params: String) -> Result<Response<Body>> {
+    pub async fn build(&self, job_path: &str, params: String) -> Result<Response<Body>> {
         let path_components = std::path::Path::new(job_path)
             .components()
             .map(|e| format!("job/{}/", e.as_os_str().to_str().unwrap()))
