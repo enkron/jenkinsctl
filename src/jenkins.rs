@@ -93,7 +93,7 @@ impl<'x> Jenkins<'x> {
         Ok(res)
     }
 
-    pub async fn get_json_data(&self, tree: Tree) -> Result<io::BufWriter<Vec<u8>>> {
+    pub async fn get_json_data(&self, tree: &Tree) -> Result<io::BufWriter<Vec<u8>>> {
         let url = format!("{}/{}", self.url, tree.query).parse::<hyper::Uri>()?;
         let mut res = Self::send_request(&url, self.user, self.pswd, Method::GET).await?;
 
@@ -107,6 +107,40 @@ impl<'x> Jenkins<'x> {
         writer.flush().await?;
 
         Ok(writer)
+    }
+
+    pub async fn get_console_log(&self, tree: &Tree) -> Option<(io::BufWriter<Vec<u8>>, usize)> {
+        let url = format!("{}/{}", self.url, tree.query)
+            .parse::<hyper::Uri>()
+            .ok()?;
+        let mut res = Self::send_request(&url, self.user, self.pswd, Method::GET)
+            .await
+            .ok()?;
+
+        let offset = res
+            .headers()
+            .get("x-text-size")
+            .unwrap()
+            .to_str()
+            .ok()?
+            .parse::<usize>()
+            .ok()?;
+
+        let buf = Vec::new();
+        let mut writer = io::BufWriter::new(buf);
+
+        while let Some(next) = res.data().await {
+            let chunk = next.ok()?;
+            writer.write_all(&chunk).await.ok()?;
+        }
+        writer.flush().await.ok()?;
+
+        if !res.headers().contains_key("x-more-data") {
+            print!("{}", String::from_utf8_lossy(writer.get_ref()));
+            return None;
+        }
+
+        Some((writer, offset))
     }
 
     pub async fn shutdown(self, state: ShutdownState) -> Result<Response<Body>> {

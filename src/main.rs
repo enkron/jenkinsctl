@@ -161,6 +161,8 @@ enum JobAction {
             hide_default_value = true
         )]
         params: String,
+        #[arg(short, long, help = "Follow the console output")]
+        follow: bool,
     },
     #[command(
         aliases = ["rm", "delete", "del"],
@@ -185,7 +187,7 @@ async fn rec_walk<'t>(
 
         query.insert_str(0, &inner_job);
         let tree = Tree::new(query);
-        let json_data = jenkins.get_json_data(tree).await?;
+        let json_data = jenkins.get_json_data(&tree).await?;
 
         let nested_job_info = jenkins
             .system::<JobInfo>(json_data.get_ref().as_slice())
@@ -266,7 +268,7 @@ async fn main() -> Result<()> {
             Some(NodeAction::Show { show_commands }) => match show_commands {
                 Some(ShowAction::Raw) => {
                     let tree = Tree::new("computer/api/json".to_string());
-                    let json_data = jenkins.get_json_data(tree).await?;
+                    let json_data = jenkins.get_json_data(&tree).await?;
                     let node_info = jenkins
                         .system::<NodeInfo>(json_data.get_ref().as_slice())
                         .await?;
@@ -274,7 +276,7 @@ async fn main() -> Result<()> {
                 }
                 Some(ShowAction::Executors { total, busy }) => {
                     let tree = Tree::new("computer/api/json".to_string());
-                    let json_data = jenkins.get_json_data(tree).await?;
+                    let json_data = jenkins.get_json_data(&tree).await?;
 
                     let node_info = jenkins
                         .system::<NodeInfo>(json_data.get_ref().as_slice())
@@ -297,7 +299,7 @@ async fn main() -> Result<()> {
             },
             Some(NodeAction::List { status }) => {
                 let tree = Tree::new("computer/api/json".to_string());
-                let json_data = jenkins.get_json_data(tree).await?;
+                let json_data = jenkins.get_json_data(&tree).await?;
 
                 let node_info = jenkins
                     .system::<NodeInfo>(json_data.get_ref().as_slice())
@@ -324,7 +326,7 @@ async fn main() -> Result<()> {
                 if job.is_empty() {
                     let tree =
                         Tree::new("api/json?tree=jobs[fullDisplayName,fullName,name]".to_string());
-                    let json_data = jenkins.get_json_data(tree).await?;
+                    let json_data = jenkins.get_json_data(&tree).await?;
 
                     let job_info = jenkins
                         .system::<JobInfo>(json_data.get_ref().as_slice())
@@ -341,7 +343,7 @@ async fn main() -> Result<()> {
                         Tree::new("api/json?tree=builds[number,url],nextBuildNumber".to_string())
                             .build_path(&job);
 
-                    let json_data = jenkins.get_json_data(tree).await?;
+                    let json_data = jenkins.get_json_data(&tree).await?;
                     let build_info = jenkins
                         .system::<BuildInfo>(json_data.get_ref().as_slice())
                         .await?;
@@ -351,12 +353,16 @@ async fn main() -> Result<()> {
                     }
                 }
             }
-            Some(JobAction::Build { job, params }) => {
+            Some(JobAction::Build {
+                job,
+                params,
+                follow,
+            }) => {
                 let tree =
                     Tree::new("api/json?tree=builds[number,url],nextBuildNumber".to_string())
                         .build_path(&job);
 
-                let json_data = jenkins.get_json_data(tree).await?;
+                let json_data = jenkins.get_json_data(&tree).await?;
                 let build_info = jenkins
                     .system::<BuildInfo>(json_data.get_ref().as_slice())
                     .await?;
@@ -364,6 +370,29 @@ async fn main() -> Result<()> {
                 log::info!("started build {}", build_info.next_build_number);
 
                 jenkins.build(&job, params).await?;
+
+                if follow {
+                    let mut offset: usize = 0;
+                    loop {
+                        let tree = Tree::new(format!(
+                            "{}/logText/progressiveText?start={offset}",
+                            build_info.next_build_number
+                        ))
+                        .build_path(&job);
+
+                        match jenkins.get_console_log(&tree).await {
+                            Some((data, current_offset)) => {
+                                if !data.get_ref().is_empty() {
+                                    print!("{}", String::from_utf8_lossy(data.get_ref()));
+                                    offset = current_offset;
+                                }
+                            }
+                            None => {
+                                break;
+                            }
+                        }
+                    }
+                }
             }
             Some(JobAction::Remove { job }) => {
                 jenkins.remove(&job).await?;
