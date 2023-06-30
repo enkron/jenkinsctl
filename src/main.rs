@@ -232,10 +232,10 @@ async fn main() -> Result<()> {
 
     if url.is_empty() || user.is_empty() || token.is_empty() {
         log::error!(
-            "missing argument: url={}, user={}, token={}",
-            url,
-            user,
-            token
+            "missing argument(s): url={}, user={}, token={}",
+            !url.is_empty(),
+            !user.is_empty(),
+            !token.is_empty()
         );
         std::process::exit(1);
     }
