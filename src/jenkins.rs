@@ -52,14 +52,16 @@ impl<'x> Jenkins<'x> {
     pub fn new(user: &'x str, pswd: &'x str, jenkins_url: &'x str) -> Self {
         let parsed_url = jenkins_url.parse::<hyper::Uri>().unwrap();
         let url = format!(
-            "{}://{}:{}@{}",
+            "{}://{}:{}@{}:{}",
             parsed_url.scheme().unwrap(),
             user,
             pswd,
-            parsed_url.host().unwrap()
+            parsed_url.host().unwrap(),
+            parsed_url.port_u16().unwrap_or(443)
         )
         .parse::<hyper::Uri>()
         .unwrap();
+
         Self { url, user, pswd }
     }
 
