@@ -72,27 +72,53 @@ impl<'x> Jenkins<'x> {
         method: Method,
     ) -> Result<Response<Body>> {
         let host = url.host().expect("uri has no host");
-        let port = url.port_u16().unwrap_or(443);
-        let stream = HttpsConnector::new();
+        let port = url.port_u16().unwrap();
+        let scheme = url.scheme_str().unwrap();
 
-        let client = Client::builder().build::<_, Body>(stream);
+        match scheme {
+            "http" => {
+                let client = Client::new();
 
-        let req = Request::builder()
-            .uri(url)
-            .method(method)
-            .header(hyper::header::HOST, format!("{host}:{port}"))
-            .header(
-                hyper::header::AUTHORIZATION,
-                format!(
-                    "Basic {}",
-                    engine::general_purpose::URL_SAFE.encode(format!("{user}:{pswd}"))
-                ),
-            )
-            .body(hyper::body::Body::empty())?;
+                let req = Request::builder()
+                    .uri(url)
+                    .method(method)
+                    .header(hyper::header::HOST, format!("{host}:{port}"))
+                    .header(
+                        hyper::header::AUTHORIZATION,
+                        format!(
+                            "Basic {}",
+                            engine::general_purpose::URL_SAFE.encode(format!("{user}:{pswd}"))
+                        ),
+                    )
+                    .body(hyper::body::Body::empty())?;
 
-        let res = client.request(req).await?;
+                let res = client.request(req).await?;
 
-        Ok(res)
+                Ok(res)
+            }
+            "https" => {
+                let stream = HttpsConnector::new();
+                let client = Client::builder().build::<_, Body>(stream);
+
+                let req = Request::builder()
+                    .uri(url)
+                    .method(method)
+                    .header(hyper::header::HOST, format!("{host}:{port}"))
+                    .header(
+                        hyper::header::AUTHORIZATION,
+                        format!(
+                            "Basic {}",
+                            engine::general_purpose::URL_SAFE.encode(format!("{user}:{pswd}"))
+                        ),
+                    )
+                    .body(hyper::body::Body::empty())?;
+
+                let res = client.request(req).await?;
+
+                Ok(res)
+            }
+            _ => Err("scheme is not http or https".into()),
+        }
     }
 
     pub async fn get_json_data(&self, tree: &Tree) -> Result<io::BufWriter<Vec<u8>>> {
