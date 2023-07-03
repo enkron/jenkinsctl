@@ -37,7 +37,7 @@ struct Args {
     )]
     token: String,
     #[command(subcommand)]
-    commands: Option<Commands>,
+    commands: Commands,
 }
 
 #[derive(Subcommand)]
@@ -45,7 +45,7 @@ enum Commands {
     #[command(about = "Set 'prepare to shutdown' bunner with optional reason")]
     Shutdown {
         #[command(subcommand)]
-        shutdown_commands: Option<ShutdownState>,
+        shutdown_commands: ShutdownState,
     },
     #[command(about = "Restart Jenkins instance")]
     Restart {
@@ -55,19 +55,19 @@ enum Commands {
     #[command(about = "Copy job from the existing one")]
     Copy {
         #[command(subcommand)]
-        copy_commands: Option<CopyItem>,
+        copy_commands: CopyItem,
     },
     #[command(about = "Node actions")]
     #[command(arg_required_else_help(true))]
     Node {
         #[command(subcommand)]
-        node_commands: Option<NodeAction>,
+        node_commands: NodeAction,
     },
     #[command(about = "Node actions")]
     #[command(arg_required_else_help(true))]
     Job {
         #[command(subcommand)]
-        job_commands: Option<JobAction>,
+        job_commands: JobAction,
     },
 }
 
@@ -111,7 +111,7 @@ enum NodeAction {
     #[command(about = "Show node information")]
     Show {
         #[command(subcommand)]
-        show_commands: Option<ShowAction>,
+        show_commands: ShowAction,
     },
     #[command(aliases = ["ls"], about = "List all nodes")]
     List {
@@ -243,30 +243,28 @@ async fn main() -> Result<()> {
     let jenkins = Jenkins::new(&user, &token, &url);
 
     match args.commands {
-        Some(Commands::Shutdown { shutdown_commands }) => match shutdown_commands {
-            Some(ShutdownState::On { reason }) => {
+        Commands::Shutdown { shutdown_commands } => match shutdown_commands {
+            ShutdownState::On { reason } => {
                 jenkins.shutdown(ShutdownState::On { reason }).await?;
             }
-            Some(ShutdownState::Off) => {
+            ShutdownState::Off => {
                 jenkins.shutdown(ShutdownState::Off).await?;
             }
-            None => todo!(),
         },
-        Some(Commands::Restart { hard }) => {
+        Commands::Restart { hard } => {
             jenkins.restart(hard).await?;
         }
-        Some(Commands::Copy { copy_commands }) => match copy_commands {
-            Some(CopyItem::Job { from, to }) => {
+        Commands::Copy { copy_commands } => match copy_commands {
+            CopyItem::Job { from, to } => {
                 jenkins.copy(CopyItem::Job { from, to }).await?;
             }
-            Some(CopyItem::View { from, to }) => {
+            CopyItem::View { from, to } => {
                 jenkins.copy(CopyItem::View { from, to }).await?;
             }
-            None => todo!(),
         },
-        Some(Commands::Node { node_commands }) => match node_commands {
-            Some(NodeAction::Show { show_commands }) => match show_commands {
-                Some(ShowAction::Raw) => {
+        Commands::Node { node_commands } => match node_commands {
+            NodeAction::Show { show_commands } => match show_commands {
+                ShowAction::Raw => {
                     let tree = Tree::new("computer/api/json".to_string());
                     let json_data = jenkins.get_json_data(&tree).await?;
                     let node_info = jenkins
@@ -274,7 +272,7 @@ async fn main() -> Result<()> {
                         .await?;
                     println!("{:#?}", node_info);
                 }
-                Some(ShowAction::Executors { total, busy }) => {
+                ShowAction::Executors { total, busy } => {
                     let tree = Tree::new("computer/api/json".to_string());
                     let json_data = jenkins.get_json_data(&tree).await?;
 
@@ -295,9 +293,8 @@ async fn main() -> Result<()> {
                         println!("Busy executors: {}", node_info.busy_executors);
                     }
                 }
-                None => todo!(),
             },
-            Some(NodeAction::List { status }) => {
+            NodeAction::List { status } => {
                 let tree = Tree::new("computer/api/json".to_string());
                 let json_data = jenkins.get_json_data(&tree).await?;
 
@@ -319,10 +316,9 @@ async fn main() -> Result<()> {
                     }
                 }
             }
-            None => todo!(),
         },
-        Some(Commands::Job { job_commands }) => match job_commands {
-            Some(JobAction::List { job }) => {
+        Commands::Job { job_commands } => match job_commands {
+            JobAction::List { job } => {
                 if job.is_empty() {
                     let tree =
                         Tree::new("api/json?tree=jobs[fullDisplayName,fullName,name]".to_string());
@@ -353,11 +349,11 @@ async fn main() -> Result<()> {
                     }
                 }
             }
-            Some(JobAction::Build {
+            JobAction::Build {
                 job,
                 params,
                 follow,
-            }) => {
+            } => {
                 let tree =
                     Tree::new("api/json?tree=builds[number,url],nextBuildNumber".to_string())
                         .build_path(&job);
@@ -394,12 +390,10 @@ async fn main() -> Result<()> {
                     }
                 }
             }
-            Some(JobAction::Remove { job }) => {
+            JobAction::Remove { job } => {
                 jenkins.remove(&job).await?;
             }
-            None => todo!(),
         },
-        None => todo!(),
     }
 
     Ok(())
