@@ -420,20 +420,26 @@ async fn main() -> Result<()> {
             }
             JobAction::Download { item } => match item {
                 BuildItem::Artifact { job, build } => {
-                    log::info!("fetching build {build} artifacts from the {job}");
-
                     let tree =
                         Tree::new(format!("{build}/artifact/*zip*/archive.zip")).build_path(&job);
 
-                    let data = jenkins.get_json_data(&tree).await?;
-                    let job_base = std::path::Path::new(&job)
-                        .file_name()
-                        .unwrap()
-                        .to_str()
-                        .unwrap();
+                    match jenkins.get_json_data(&tree).await {
+                        Ok(data) => {
+                            log::info!("fetching build {build} artifacts from the {job}");
+                            let job_base = std::path::Path::new(&job)
+                                .file_name()
+                                .unwrap()
+                                .to_str()
+                                .unwrap();
 
-                    let mut file = std::fs::File::create(format!("{job_base}_{build}.zip"))?;
-                    file.write_all(data.get_ref())?;
+                            let mut file =
+                                std::fs::File::create(format!("{job_base}_{build}.zip"))?;
+                            file.write_all(data.get_ref())?;
+                        }
+                        Err(e) => log::error!(
+                            "\x1b[30;1m{e}\x1b[m: artifacts not found for the build {build}"
+                        ),
+                    }
                 }
             },
         },

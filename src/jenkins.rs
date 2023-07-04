@@ -1,6 +1,6 @@
 #![warn(clippy::all, clippy::pedantic)]
 use base64::{engine, Engine as _};
-use hyper::{body::HttpBody as _, Body, Client, Method, Request, Response};
+use hyper::{body::HttpBody as _, Body, Client, Method, Request, Response, StatusCode};
 use hyper_tls::HttpsConnector;
 use serde::Deserialize;
 use serde_json;
@@ -103,6 +103,10 @@ impl<'x> Jenkins<'x> {
     pub async fn get_json_data(&self, tree: &Tree) -> Result<io::BufWriter<Vec<u8>>> {
         let url = format!("{}/{}", self.url, tree.query).parse::<hyper::Uri>()?;
         let mut res = Self::send_request(&url, self.user, self.pswd, Method::GET).await?;
+
+        if res.status() == StatusCode::NOT_FOUND {
+            return Err(format!("{}", res.status().as_str()).into());
+        }
 
         let buf = Vec::new();
         let mut writer = io::BufWriter::new(buf);
