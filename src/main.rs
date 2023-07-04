@@ -3,6 +3,7 @@ use async_recursion::async_recursion;
 use clap::{Parser, Subcommand};
 use log;
 use pretty_env_logger;
+use std::io::Write;
 
 mod jenkins;
 mod job;
@@ -173,6 +174,28 @@ enum JobAction {
     Remove {
         #[arg(index = 1, help = "Job path (format: path/to/jenkins/job)")]
         job: String,
+    },
+    #[command(
+        aliases = ["fetch"],
+        about = "Download an item from a particular build(s)"
+    )]
+    Download {
+        #[command(subcommand)]
+        item: BuildItem,
+    },
+}
+
+#[derive(Subcommand)]
+enum BuildItem {
+    #[command(about = "Download build artifacts if any")]
+    Artifact {
+        #[arg(index = 1, help = "Job path (format: path/to/jenkins/job)")]
+        job: String,
+        #[arg(
+            index = 2,
+            help = "Build number or build range (range is not implemented yet)"
+        )]
+        build: String,
     },
 }
 
@@ -395,6 +418,24 @@ async fn main() -> Result<()> {
             JobAction::Remove { job } => {
                 jenkins.remove(&job).await?;
             }
+            JobAction::Download { item } => match item {
+                BuildItem::Artifact { job, build } => {
+                    log::info!("fetching build {build} artifacts from the {job}");
+
+                    let tree =
+                        Tree::new(format!("{build}/artifact/*zip*/archive.zip")).build_path(&job);
+
+                    let data = jenkins.get_json_data(&tree).await?;
+                    let job_base = std::path::Path::new(&job)
+                        .file_name()
+                        .unwrap()
+                        .to_str()
+                        .unwrap();
+
+                    let mut file = std::fs::File::create(format!("{job_base}_{build}.zip"))?;
+                    file.write_all(data.get_ref())?;
+                }
+            },
         },
         Commands::Info => println!("{url}"),
     }
