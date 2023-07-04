@@ -45,7 +45,7 @@ impl std::fmt::Display for Tree {
 pub struct Jenkins<'x> {
     user: &'x str,
     pswd: &'x str,
-    pub url: hyper::Uri,
+    url: hyper::Uri,
 }
 
 impl<'x> Jenkins<'x> {

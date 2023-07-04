@@ -69,6 +69,8 @@ enum Commands {
         #[command(subcommand)]
         job_commands: JobAction,
     },
+    #[command(about = "Display system-wide information")]
+    Info,
 }
 
 #[derive(Subcommand)]
@@ -394,6 +396,7 @@ async fn main() -> Result<()> {
                 jenkins.remove(&job).await?;
             }
         },
+        Commands::Info => println!("{url}"),
     }
 
     Ok(())
