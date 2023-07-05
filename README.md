@@ -20,3 +20,15 @@ Current functionality includes:
     - list    Recursively list all the jobs in an instance
     - build   Build a job (use '-' as param list to build with defaults)
     - remove  Remove a job (use with caution, the action is permanent)
+
+## Abort a job
+Jenkins rest api provides three levels of interruption:
+- `stop` aborts a pipeline;
+- `term` forcibly terminates a build;
+- `kill` hard kill a pipeline (the most destructive way to stop a pipeline);
+
+`jenkinsctl` wraps it with the *nix signals equivalent:
+
+```bash
+jenkinsctl job kill -s <HUP|TERM|KILL|1|15|9> <JOB> <BUILD>
+```
