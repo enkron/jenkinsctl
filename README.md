@@ -21,6 +21,37 @@ Current functionality includes:
     - build   Build a job (use '-' as param list to build with defaults)
     - remove  Remove a job (use with caution, the action is permanent)
 
+## Build a job
+There are two types of the jobs in Jenkins: parameterized and
+un-parameterized.
+
+To build a job without parameters use the following command:
+
+```bash
+jenkinsctl job build <JOB>
+```
+
+To build a job with parameters use:
+
+```bash
+jenkinsctl job build <JOB> [PARAMS]
+```
+
+`jenkinsctl` accepts parameters in the following format:
+*param=value,...,param=value*
+
+You can also perform a parameterized build using defaults:
+
+```bash
+jenkinsctl job build <JOB> -
+```
+
+To stream a job's execution process to stdout, add the `-f` switch:
+
+````bash
+jenkinsctl job build <JOB> [PARAMS] -f
+````
+
 ## Abort a job
 Jenkins rest api provides three levels of interruption:
 - `stop` aborts a pipeline;
