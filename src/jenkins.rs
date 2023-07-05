@@ -4,6 +4,7 @@ use hyper::{body::HttpBody as _, Body, Client, Method, Request, Response, Status
 use hyper_tls::HttpsConnector;
 use serde::Deserialize;
 use serde_json;
+use std::str::FromStr;
 use tokio::io::{self, AsyncWriteExt as _};
 use urlencoding::encode;
 
@@ -39,6 +40,25 @@ impl Tree {
 impl std::fmt::Display for Tree {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self)
+    }
+}
+
+enum Signal {
+    Hup,
+    Term,
+    Kill,
+}
+
+impl FromStr for Signal {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Signal, Self::Err> {
+        match s {
+            "HUP" | "1" => Ok(Signal::Hup),
+            "TERM" | "15" => Ok(Signal::Term),
+            "KILL" | "9" => Ok(Signal::Kill),
+            _ => Err(s.to_string()),
+        }
     }
 }
 
@@ -175,12 +195,10 @@ impl<'x> Jenkins<'x> {
 
     pub async fn restart(self, hard: bool) -> Result<Response<Body>> {
         if hard {
-            println!("hard restart is activated");
             let url = format!("{}/restart", self.url).parse::<hyper::Uri>()?;
             return Self::send_request(&url, self.user, self.pswd, Method::POST).await;
         }
 
-        println!("safe restart is activated");
         let url = format!("{}/safeRestart", self.url).parse::<hyper::Uri>()?;
         Self::send_request(&url, self.user, self.pswd, Method::POST).await
     }
@@ -262,5 +280,20 @@ impl<'x> Jenkins<'x> {
         let url = format!("{}/{}", self.url, path_components).parse::<hyper::Uri>()?;
 
         Self::send_request(&url, self.user, self.pswd, Method::DELETE).await
+    }
+
+    pub async fn kill(&self, tree: &Tree, signal: String) -> Result<Response<Body>> {
+        if let Err(e) = Signal::from_str(signal.as_str()) {
+            return Err(format!("invalid signal: {e}").into());
+        }
+
+        let url = match Signal::from_str(signal.as_str())? {
+            Signal::Hup => format!("{}/{}/stop", self.url, tree.query),
+            Signal::Term => format!("{}/{}/term", self.url, tree.query),
+            Signal::Kill => format!("{}/{}/kill", self.url, tree.query),
+        }
+        .parse::<hyper::Uri>()?;
+
+        Self::send_request(&url, self.user, self.pswd, Method::POST).await
     }
 }

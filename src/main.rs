@@ -183,6 +183,23 @@ enum JobAction {
         #[command(subcommand)]
         item: BuildItem,
     },
+    #[command(about = "Interrupt a build execution")]
+    Kill {
+        #[arg(
+            short,
+            long,
+            help = "Send a signal to the job process (HUP, TERM, KILL)",
+            default_value = "TERM"
+        )]
+        signal: String,
+        #[arg(index = 1, help = "Job path (format: path/to/jenkins/job)")]
+        job: String,
+        #[arg(
+            index = 2,
+            help = "Build number or build range (range is not implemented yet)"
+        )]
+        build: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -442,6 +459,12 @@ async fn main() -> Result<()> {
                     }
                 }
             },
+            JobAction::Kill { signal, job, build } => {
+                let tree = Tree::new(format!("{build}")).build_path(&job);
+                if let Err(e) = jenkins.kill(&tree, signal).await {
+                    log::error!("{e}");
+                }
+            }
         },
         Commands::Info => println!("{url}"),
     }
