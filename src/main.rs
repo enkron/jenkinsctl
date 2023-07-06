@@ -46,7 +46,7 @@ enum Commands {
     #[command(about = "Set 'prepare to shutdown' bunner with optional reason")]
     Shutdown {
         #[command(subcommand)]
-        shutdown_commands: ShutdownState,
+        state: ShutdownState,
     },
     #[command(about = "Restart Jenkins instance")]
     Restart {
@@ -322,14 +322,9 @@ async fn main() -> Result<()> {
     let jenkins = Jenkins::new(&user, &token, &url);
 
     match args.commands {
-        Commands::Shutdown { shutdown_commands } => match shutdown_commands {
-            ShutdownState::On { reason } => {
-                jenkins.shutdown(ShutdownState::On { reason }).await?;
-            }
-            ShutdownState::Off => {
-                jenkins.shutdown(ShutdownState::Off).await?;
-            }
-        },
+        Commands::Shutdown { state } => {
+            jenkins.shutdown(state).await?;
+        }
         Commands::Restart { hard } => {
             jenkins.restart(hard).await?;
         }
