@@ -8,7 +8,7 @@ use std::str::FromStr;
 use tokio::io::{self, AsyncWriteExt as _};
 use urlencoding::encode;
 
-use crate::{CopyItem, ShutdownState};
+use crate::{CopyItem, NodeState, ShutdownState};
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -291,6 +291,40 @@ impl<'x> Jenkins<'x> {
             Signal::Hup => format!("{}/{}/stop", self.url, tree.query),
             Signal::Term => format!("{}/{}/term", self.url, tree.query),
             Signal::Kill => format!("{}/{}/kill", self.url, tree.query),
+        }
+        .parse::<hyper::Uri>()?;
+
+        Self::send_request(&url, self.user, self.pswd, Method::POST).await
+    }
+
+    pub async fn set(&self, tree: &Tree, state: NodeState) -> Result<Response<Body>> {
+        let url = match state {
+            NodeState::Disconnect { reason } => {
+                if !reason.is_empty() {
+                    format!(
+                        "{}{}/doDisconnect?offlineMessage={}",
+                        self.url,
+                        tree.query,
+                        encode(reason.as_str())
+                    )
+                } else {
+                    format!("{}{}/doDisconnect", self.url, tree.query)
+                }
+            }
+            NodeState::Connect => format!("{}{}/launchSlaveAgent", self.url, tree.query),
+            NodeState::Offline { reason } => {
+                if !reason.is_empty() {
+                    format!(
+                        "{}{}/toggleOffline?offlineMessage={}",
+                        self.url,
+                        tree.query,
+                        encode(reason.as_str())
+                    )
+                } else {
+                    format!("{}{}/toggleOffline", self.url, tree.query)
+                }
+            }
+            NodeState::Online => format!("{}{}/toggleOffline", self.url, tree.query),
         }
         .parse::<hyper::Uri>()?;
 

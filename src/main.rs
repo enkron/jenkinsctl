@@ -121,6 +121,13 @@ enum NodeAction {
         #[arg(long, help = "Show node offline")]
         status: bool,
     },
+    #[command(about = "Switch node state")]
+    Set {
+        #[arg(index = 1, help = "Node name")]
+        node: String,
+        #[command(subcommand)]
+        state: NodeState,
+    },
 }
 
 #[derive(Subcommand)]
@@ -214,6 +221,36 @@ enum BuildItem {
         )]
         build: String,
     },
+}
+
+#[derive(Subcommand)]
+pub enum NodeState {
+    #[command(about = "Disconnect a node")]
+    Disconnect {
+        #[arg(
+            index = 1,
+            help = "Optional reason",
+            required = false,
+            default_value = "",
+            hide_default_value = true
+        )]
+        reason: String,
+    },
+    #[command(about = "Connect a node")]
+    Connect,
+    #[command(about = "Set a node offline")]
+    Offline {
+        #[arg(
+            index = 1,
+            help = "Optional reason",
+            required = false,
+            default_value = "",
+            hide_default_value = true
+        )]
+        reason: String,
+    },
+    #[command(about = "Set a node online")]
+    Online,
 }
 
 #[async_recursion]
@@ -355,6 +392,24 @@ async fn main() -> Result<()> {
                 } else {
                     for node in node_info.computer {
                         println!("{}", node.display_name);
+                    }
+                }
+            }
+            NodeAction::Set { node, state } => {
+                let tree = Tree::new(format!("computer/{node}"));
+
+                match state {
+                    NodeState::Disconnect { reason } => {
+                        jenkins.set(&tree, NodeState::Disconnect { reason }).await?;
+                    }
+                    NodeState::Connect => {
+                        jenkins.set(&tree, NodeState::Connect).await?;
+                    }
+                    NodeState::Offline { reason } => {
+                        jenkins.set(&tree, NodeState::Offline { reason }).await?;
+                    }
+                    NodeState::Online => {
+                        jenkins.set(&tree, NodeState::Online).await?;
                     }
                 }
             }
