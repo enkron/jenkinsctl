@@ -397,21 +397,7 @@ async fn main() -> Result<()> {
             }
             NodeAction::Set { node, state } => {
                 let tree = Tree::new(format!("computer/{node}"));
-
-                match state {
-                    NodeState::Disconnect { reason } => {
-                        jenkins.set(&tree, NodeState::Disconnect { reason }).await?;
-                    }
-                    NodeState::Connect => {
-                        jenkins.set(&tree, NodeState::Connect).await?;
-                    }
-                    NodeState::Offline { reason } => {
-                        jenkins.set(&tree, NodeState::Offline { reason }).await?;
-                    }
-                    NodeState::Online => {
-                        jenkins.set(&tree, NodeState::Online).await?;
-                    }
-                }
+                jenkins.set(&tree, state).await?;
             }
         },
         Commands::Job { job_commands } => match job_commands {
