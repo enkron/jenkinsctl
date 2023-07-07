@@ -179,6 +179,20 @@ enum JobAction {
         about = "Download an item from a particular build(s)"
     )]
     Download {
+        #[arg(
+            index = 1,
+            help = "Job path (format: path/to/jenkins/job)",
+            global = true,
+            required = false
+        )]
+        job: String,
+        #[arg(
+            index = 2,
+            help = "Build number or build range (range is not implemented yet)",
+            global = true,
+            required = false
+        )]
+        build: String,
         #[command(subcommand)]
         item: BuildItem,
     },
@@ -204,15 +218,9 @@ enum JobAction {
 #[derive(Subcommand)]
 enum BuildItem {
     #[command(about = "Download build artifacts if any")]
-    Artifact {
-        #[arg(index = 1, help = "Job path (format: path/to/jenkins/job)")]
-        job: String,
-        #[arg(
-            index = 2,
-            help = "Build number or build range (range is not implemented yet)"
-        )]
-        build: String,
-    },
+    Artifact,
+    #[command(about = "Fetch build log")]
+    Log,
 }
 
 #[derive(Subcommand)]
@@ -414,8 +422,8 @@ pub async fn handle() -> Result<()> {
             JobAction::Remove { job } => {
                 jenkins.remove(&job).await?;
             }
-            JobAction::Download { item } => match item {
-                BuildItem::Artifact { job, build } => {
+            JobAction::Download { item, job, build } => match item {
+                BuildItem::Artifact => {
                     let tree =
                         Tree::new(format!("{build}/artifact/*zip*/archive.zip")).build_path(&job);
 
@@ -436,6 +444,12 @@ pub async fn handle() -> Result<()> {
                             "\x1b[30;1m{e}\x1b[m: artifacts not found for the build {build}"
                         ),
                     }
+                }
+                BuildItem::Log => {
+                    let tree = Tree::new(format!("{build}/consoleText")).build_path(&job);
+                    let data = jenkins.get_json_data(&tree).await?;
+                    let log = String::from_utf8(data.into_inner())?;
+                    print!("{log}");
                 }
             },
             JobAction::Kill { signal, job, build } => {
