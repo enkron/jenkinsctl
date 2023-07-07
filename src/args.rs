@@ -275,7 +275,9 @@ pub async fn parse() -> Result<()> {
             jenkins.restart(hard).await?;
         }
         Commands::Copy { item, src, dest } => {
-            jenkins.copy(item, src, dest).await?;
+            if let Err(e) = jenkins.copy(item, src, dest).await {
+                log::error!("copy \x1b[30;1mto\x1b[0m a directory is not enabled -> {e}");
+            }
         }
         Commands::Node { node_commands } => match node_commands {
             NodeAction::Show { show_commands } => match show_commands {

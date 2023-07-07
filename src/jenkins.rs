@@ -208,8 +208,7 @@ impl<'x> Jenkins<'x> {
         match item {
             CopyItem::Job => {
                 if dest.contains('/') {
-                    eprintln!("error: copy to a directory is not enabled {dest}");
-                    std::process::exit(1);
+                    return Err(dest.into());
                 }
                 let url = format!(
                     "{}/createItem?from={}&mode=copy&name={}",
