@@ -8,9 +8,10 @@ use std::str::FromStr;
 use tokio::io::{self, AsyncWriteExt as _};
 use urlencoding::encode;
 
-use crate::{CopyItem, NodeState, ShutdownState};
-
-pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+use crate::{
+    args::{CopyItem, NodeState, ShutdownState},
+    Result,
+};
 
 pub struct Tree {
     query: String,
