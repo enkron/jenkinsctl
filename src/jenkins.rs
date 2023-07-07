@@ -203,28 +203,28 @@ impl<'x> Jenkins<'x> {
         Self::send_request(&url, self.user, self.pswd, Method::POST).await
     }
 
-    pub async fn copy(self, service: CopyItem) -> Result<Response<Body>> {
-        match service {
-            CopyItem::Job { from, to } => {
-                if to.contains('/') {
-                    eprintln!("error: copy to a directory is not enabled {to}");
+    pub async fn copy(self, item: CopyItem, src: String, dest: String) -> Result<Response<Body>> {
+        match item {
+            CopyItem::Job => {
+                if dest.contains('/') {
+                    eprintln!("error: copy to a directory is not enabled {dest}");
                     std::process::exit(1);
                 }
                 let url = format!(
                     "{}/createItem?from={}&mode=copy&name={}",
                     self.url,
-                    encode(from.as_str()),
-                    encode(to.as_str())
+                    encode(src.as_str()),
+                    encode(dest.as_str())
                 )
                 .parse::<hyper::Uri>()?;
                 Self::send_request(&url, self.user, self.pswd, Method::POST).await
             }
-            CopyItem::View { from, to } => {
+            CopyItem::View => {
                 let url = format!(
                     "{}/createView?from={}&mode=copy&name={}",
                     self.url,
-                    encode(from.as_str()),
-                    encode(to.as_str())
+                    encode(src.as_str()),
+                    encode(dest.as_str())
                 )
                 .parse::<hyper::Uri>()?;
                 Self::send_request(&url, self.user, self.pswd, Method::POST).await

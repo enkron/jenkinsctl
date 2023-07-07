@@ -53,10 +53,14 @@ enum Commands {
         #[arg(long, help = "Reset Jenkins without waiting jobs completion")]
         hard: bool,
     },
-    #[command(about = "Copy job from the existing one")]
+    #[command(about = "Copy item (job/view)")]
     Copy {
         #[command(subcommand)]
-        copy_commands: CopyItem,
+        item: CopyItem,
+        #[arg(index = 1, help = "Source", global = true, required = false)]
+        src: String,
+        #[arg(index = 2, help = "Destination", global = true, required = false)]
+        dest: String,
     },
     #[command(about = "Node actions")]
     #[command(arg_required_else_help(true))]
@@ -93,20 +97,10 @@ pub enum ShutdownState {
 
 #[derive(Subcommand)]
 pub enum CopyItem {
-    #[command(about = "Copy job")]
-    Job {
-        #[arg(index = 1, help = "Job copy from")]
-        from: String,
-        #[arg(index = 2, help = "Target job")]
-        to: String,
-    },
-    #[command(about = "Copy view")]
-    View {
-        #[arg(index = 1, help = "View copy from")]
-        from: String,
-        #[arg(index = 2, help = "Target view")]
-        to: String,
-    },
+    #[command(about = "Make a copy of specific job")]
+    Job,
+    #[command(about = "Make a copy of specific view")]
+    View,
 }
 
 #[derive(Subcommand)]
@@ -328,14 +322,9 @@ async fn main() -> Result<()> {
         Commands::Restart { hard } => {
             jenkins.restart(hard).await?;
         }
-        Commands::Copy { copy_commands } => match copy_commands {
-            CopyItem::Job { from, to } => {
-                jenkins.copy(CopyItem::Job { from, to }).await?;
-            }
-            CopyItem::View { from, to } => {
-                jenkins.copy(CopyItem::View { from, to }).await?;
-            }
-        },
+        Commands::Copy { item, src, dest } => {
+            jenkins.copy(item, src, dest).await?;
+        }
         Commands::Node { node_commands } => match node_commands {
             NodeAction::Show { show_commands } => match show_commands {
                 ShowAction::Raw => {
