@@ -58,5 +58,5 @@ async fn rec_walk<'t>(
 async fn main() -> Result<()> {
     pretty_env_logger::init();
 
-    args::parse().await
+    args::handle().await
 }

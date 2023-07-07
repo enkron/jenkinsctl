@@ -245,7 +245,7 @@ pub enum NodeState {
     Online,
 }
 
-pub async fn parse() -> Result<()> {
+pub async fn handle() -> Result<()> {
     let args = Args::parse();
     let url = std::env::var(JENKINS_URL);
     let user = std::env::var(JENKINS_USER);
