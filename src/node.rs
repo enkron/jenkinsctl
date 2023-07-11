@@ -1,8 +1,9 @@
+#![allow(clippy::struct_excessive_bools)]
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct NodeInfo {
+pub struct Info {
     pub busy_executors: u32,
     pub computer: Vec<Computer>,
     display_name: String,
@@ -35,7 +36,8 @@ pub struct Computer {
 
 impl std::fmt::Display for Computer {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self)
+        let c = self;
+        write!(f, "{c}")
     }
 }
 

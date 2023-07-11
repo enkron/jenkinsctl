@@ -1,9 +1,9 @@
 #![warn(clippy::all, clippy::pedantic)]
+#![allow(clippy::similar_names)]
 use base64::{engine, Engine as _};
 use hyper::{body::HttpBody as _, Body, Client, Method, Request, Response, StatusCode};
 use hyper_tls::HttpsConnector;
 use serde::Deserialize;
-use serde_json;
 use std::str::FromStr;
 use tokio::io::{self, AsyncWriteExt as _};
 use urlencoding::encode;
@@ -40,7 +40,8 @@ impl Tree {
 
 impl std::fmt::Display for Tree {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self)
+        let t = self;
+        write!(f, "{t}")
     }
 }
 
@@ -83,7 +84,7 @@ impl<'x> Jenkins<'x> {
         .parse::<hyper::Uri>()
         .unwrap();
 
-        Self { url, user, pswd }
+        Self { user, pswd, url }
     }
 
     async fn send_request(
@@ -232,7 +233,7 @@ impl<'x> Jenkins<'x> {
         }
     }
 
-    pub async fn system<'de, I>(&self, json_data: &'de [u8]) -> Result<I>
+    pub fn system<'de, I>(json_data: &'de [u8]) -> Result<I>
     where
         I: Deserialize<'de>,
     {
@@ -300,28 +301,28 @@ impl<'x> Jenkins<'x> {
     pub async fn set(&self, tree: &Tree, state: NodeState) -> Result<Response<Body>> {
         let url = match state {
             NodeState::Disconnect { reason } => {
-                if !reason.is_empty() {
+                if reason.is_empty() {
+                    format!("{}{}/doDisconnect", self.url, tree.query)
+                } else {
                     format!(
                         "{}{}/doDisconnect?offlineMessage={}",
                         self.url,
                         tree.query,
                         encode(reason.as_str())
                     )
-                } else {
-                    format!("{}{}/doDisconnect", self.url, tree.query)
                 }
             }
             NodeState::Connect => format!("{}{}/launchSlaveAgent", self.url, tree.query),
             NodeState::Offline { reason } => {
-                if !reason.is_empty() {
+                if reason.is_empty() {
+                    format!("{}{}/toggleOffline", self.url, tree.query)
+                } else {
                     format!(
                         "{}{}/toggleOffline?offlineMessage={}",
                         self.url,
                         tree.query,
                         encode(reason.as_str())
                     )
-                } else {
-                    format!("{}{}/toggleOffline", self.url, tree.query)
                 }
             }
             NodeState::Online => format!("{}{}/toggleOffline", self.url, tree.query),

@@ -1,13 +1,12 @@
 #![warn(clippy::all, clippy::pedantic)]
+#![allow(clippy::too_many_lines)]
 use clap::{Parser, Subcommand};
-use log;
 use std::io::Write;
 
 use crate::{
     jenkins::{Jenkins, Tree},
-    job::{BuildInfo, JobInfo},
-    node::NodeInfo,
-    rec_walk, Result,
+    job::{self, BuildInfo},
+    node, rec_walk, Result,
 };
 
 const JENKINS_URL: &str = "JENKINS_URL";
@@ -292,18 +291,14 @@ pub async fn handle() -> Result<()> {
                 ShowAction::Raw => {
                     let tree = Tree::new("computer/api/json".to_string());
                     let json_data = jenkins.get_json_data(&tree).await?;
-                    let node_info = jenkins
-                        .system::<NodeInfo>(json_data.get_ref().as_slice())
-                        .await?;
+                    let node_info = Jenkins::system::<node::Info>(json_data.get_ref().as_slice())?;
                     println!("{:#?}", node_info);
                 }
                 ShowAction::Executors { total, busy } => {
                     let tree = Tree::new("computer/api/json".to_string());
                     let json_data = jenkins.get_json_data(&tree).await?;
 
-                    let node_info = jenkins
-                        .system::<NodeInfo>(json_data.get_ref().as_slice())
-                        .await?;
+                    let node_info = Jenkins::system::<node::Info>(json_data.get_ref().as_slice())?;
 
                     if total && !busy {
                         println!("Total number of executors: {}", node_info.total_executors);
@@ -323,9 +318,7 @@ pub async fn handle() -> Result<()> {
                 let tree = Tree::new("computer/api/json".to_string());
                 let json_data = jenkins.get_json_data(&tree).await?;
 
-                let node_info = jenkins
-                    .system::<NodeInfo>(json_data.get_ref().as_slice())
-                    .await?;
+                let node_info = Jenkins::system::<node::Info>(json_data.get_ref().as_slice())?;
 
                 if status {
                     for node in node_info.computer {
@@ -353,13 +346,11 @@ pub async fn handle() -> Result<()> {
                         Tree::new("api/json?tree=jobs[fullDisplayName,fullName,name]".to_string());
                     let json_data = jenkins.get_json_data(&tree).await?;
 
-                    let job_info = jenkins
-                        .system::<JobInfo>(json_data.get_ref().as_slice())
-                        .await?;
+                    let job_info = Jenkins::system::<job::Info>(json_data.get_ref().as_slice())?;
 
                     for job in job_info.jobs {
                         let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
-                        let inner_job = "".to_string();
+                        let inner_job = String::new();
 
                         rec_walk(&class, &jenkins, job.full_name.as_str(), inner_job).await?;
                     }
@@ -369,9 +360,7 @@ pub async fn handle() -> Result<()> {
                             .build_path(&job);
 
                     let json_data = jenkins.get_json_data(&tree).await?;
-                    let build_info = jenkins
-                        .system::<BuildInfo>(json_data.get_ref().as_slice())
-                        .await?;
+                    let build_info = Jenkins::system::<BuildInfo>(json_data.get_ref().as_slice())?;
 
                     for build in build_info.builds {
                         println!("{}", build.number);
@@ -388,9 +377,7 @@ pub async fn handle() -> Result<()> {
                         .build_path(&job);
 
                 let json_data = jenkins.get_json_data(&tree).await?;
-                let build_info = jenkins
-                    .system::<BuildInfo>(json_data.get_ref().as_slice())
-                    .await?;
+                let build_info = Jenkins::system::<BuildInfo>(json_data.get_ref().as_slice())?;
 
                 log::info!("started build {}", build_info.next_build_number);
 

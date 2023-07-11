@@ -1,13 +1,11 @@
 #![warn(clippy::all, clippy::pedantic)]
 use async_recursion::async_recursion;
-use pretty_env_logger;
 
 mod args;
 mod jenkins;
 mod job;
 mod node;
 use crate::jenkins::{Jenkins, Tree};
-use crate::job::JobInfo;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -26,9 +24,7 @@ async fn rec_walk<'t>(
         let tree = Tree::new(query);
         let json_data = jenkins.get_json_data(&tree).await?;
 
-        let nested_job_info = jenkins
-            .system::<JobInfo>(json_data.get_ref().as_slice())
-            .await?;
+        let nested_job_info = Jenkins::system::<job::Info>(json_data.get_ref().as_slice())?;
         for job in nested_job_info.jobs {
             let mut job_path = std::path::Path::new(job.full_name.as_str())
                 .iter()
@@ -38,14 +34,13 @@ async fn rec_walk<'t>(
             let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
 
             for e in &job_path {
-                if class != "folder" {
-                    print!("\x1b[94;1m{e}\x1b[0m => ");
-                } else {
+                if class == "folder" {
                     continue;
                 }
+                print!("\x1b[94;1m{e}\x1b[0m => ");
             }
 
-            rec_walk(&class, &jenkins, job.name.as_str(), inner_job.clone()).await?;
+            rec_walk(&class, jenkins, job.name.as_str(), inner_job.clone()).await?;
         }
     } else {
         println!("{job_name}");

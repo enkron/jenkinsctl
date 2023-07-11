@@ -1,7 +1,8 @@
+#![allow(clippy::struct_excessive_bools)]
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug, Serialize)]
-pub struct JobInfo {
+pub struct Info {
     pub jobs: Vec<Jobs>,
 }
 
