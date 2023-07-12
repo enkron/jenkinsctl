@@ -1,7 +1,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::too_many_lines)]
 use clap::{Parser, Subcommand};
-use std::io::Write;
+use std::{io::Write, str::FromStr};
 
 use crate::{
     jenkins::{Jenkins, Tree},
@@ -450,4 +450,35 @@ pub async fn handle() -> Result<()> {
     }
 
     Ok(())
+}
+
+//    let s = "1..5";
+//    let r = s.parse::<Build>().unwrap();
+//    match r {
+//        Build::Range(start, end) => {
+//            for i in start..end {
+//                println!("{i}");
+//            }
+//        }
+//        Build::Once(n) => println!("{n}"),
+//    }
+
+enum Build {
+    Range(u64, u64),
+    Once(u64),
+}
+
+impl FromStr for Build {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        if s.contains("..") {
+            let start = s.split_once('.').unwrap().0.parse::<u64>()?;
+            let end = s.rsplit_once('.').unwrap().1.parse::<u64>()?;
+
+            return Ok(Self::Range(start, end));
+        }
+        let num = s.parse::<u64>()?;
+        Ok(Self::Once(num))
+    }
 }
