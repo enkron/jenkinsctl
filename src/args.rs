@@ -411,25 +411,32 @@ pub async fn handle() -> Result<()> {
             }
             JobAction::Download { item, job, build } => match item {
                 BuildItem::Artifact => {
-                    let tree =
-                        Tree::new(format!("{build}/artifact/*zip*/archive.zip")).build_path(&job);
+                    let build_param = build.parse::<BuildParam>()?;
+                    match build_param {
+                        #[allow(unused_variables)]
+                        BuildParam::Range(start, end) => todo!(),
+                        BuildParam::Once(n) => {
+                            let tree = Tree::new(format!("{n}/artifact/*zip*/archive.zip"))
+                                .build_path(&job);
 
-                    match jenkins.get_json_data(&tree).await {
-                        Ok(data) => {
-                            log::info!("fetching build {build} artifacts from the {job}");
-                            let job_base = std::path::Path::new(&job)
-                                .file_name()
-                                .unwrap()
-                                .to_str()
-                                .unwrap();
+                            match jenkins.get_json_data(&tree).await {
+                                Ok(data) => {
+                                    log::info!("fetching build {n} artifacts from the {job}");
+                                    let job_base = std::path::Path::new(&job)
+                                        .file_name()
+                                        .unwrap()
+                                        .to_str()
+                                        .unwrap();
 
-                            let mut file =
-                                std::fs::File::create(format!("{job_base}_{build}.zip"))?;
-                            file.write_all(data.get_ref())?;
+                                    let mut file =
+                                        std::fs::File::create(format!("{job_base}_{n}.zip"))?;
+                                    file.write_all(data.get_ref())?;
+                                }
+                                Err(e) => log::error!(
+                                    "\x1b[30;1m{e}\x1b[m: artifacts not found for the build {n}"
+                                ),
+                            }
                         }
-                        Err(e) => log::error!(
-                            "\x1b[30;1m{e}\x1b[m: artifacts not found for the build {build}"
-                        ),
                     }
                 }
                 BuildItem::Log => {
@@ -463,12 +470,12 @@ pub async fn handle() -> Result<()> {
 //        Build::Once(n) => println!("{n}"),
 //    }
 
-enum Build {
+enum BuildParam {
     Range(u64, u64),
     Once(u64),
 }
 
-impl FromStr for Build {
+impl FromStr for BuildParam {
     type Err = std::num::ParseIntError;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
