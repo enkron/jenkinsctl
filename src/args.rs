@@ -252,6 +252,26 @@ pub enum NodeState {
     Online,
 }
 
+enum BuildParam {
+    Range(u64, u64),
+    Once(u64),
+}
+
+impl FromStr for BuildParam {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        if s.contains("..") {
+            let start = s.split_once('.').unwrap().0.parse::<u64>()?;
+            let end = s.rsplit_once('.').unwrap().1.parse::<u64>()?;
+
+            return Ok(Self::Range(start, end));
+        }
+        let num = s.parse::<u64>()?;
+        Ok(Self::Once(num))
+    }
+}
+
 pub async fn handle() -> Result<()> {
     let args = Args::parse();
     let url = std::env::var(JENKINS_URL);
@@ -414,7 +434,33 @@ pub async fn handle() -> Result<()> {
                     let build_param = build.parse::<BuildParam>()?;
                     match build_param {
                         #[allow(unused_variables)]
-                        BuildParam::Range(start, end) => todo!(),
+                        BuildParam::Range(start, end) => {
+                            for build in start..end {
+                                let tree = Tree::new(format!("{build}/artifact/*zip*/archive.zip"))
+                                    .build_path(&job);
+
+                                match jenkins.get_json_data(&tree).await {
+                                    Ok(data) => {
+                                        log::info!(
+                                            "fetching build {build} artifacts from the {job}"
+                                        );
+                                        let job_base = std::path::Path::new(&job)
+                                            .file_name()
+                                            .unwrap()
+                                            .to_str()
+                                            .unwrap();
+
+                                        let mut file = std::fs::File::create(format!(
+                                            "{job_base}_{build}.zip"
+                                        ))?;
+                                        file.write_all(data.get_ref())?;
+                                    }
+                                    Err(e) => log::error!(
+                                        "\x1b[30;1m{e}\x1b[m: artifacts not found for the build {build}"
+                                    ),
+                                }
+                            }
+                        }
                         BuildParam::Once(n) => {
                             let tree = Tree::new(format!("{n}/artifact/*zip*/archive.zip"))
                                 .build_path(&job);
@@ -457,35 +503,4 @@ pub async fn handle() -> Result<()> {
     }
 
     Ok(())
-}
-
-//    let s = "1..5";
-//    let r = s.parse::<Build>().unwrap();
-//    match r {
-//        Build::Range(start, end) => {
-//            for i in start..end {
-//                println!("{i}");
-//            }
-//        }
-//        Build::Once(n) => println!("{n}"),
-//    }
-
-enum BuildParam {
-    Range(u64, u64),
-    Once(u64),
-}
-
-impl FromStr for BuildParam {
-    type Err = std::num::ParseIntError;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        if s.contains("..") {
-            let start = s.split_once('.').unwrap().0.parse::<u64>()?;
-            let end = s.rsplit_once('.').unwrap().1.parse::<u64>()?;
-
-            return Ok(Self::Range(start, end));
-        }
-        let num = s.parse::<u64>()?;
-        Ok(Self::Once(num))
-    }
 }
