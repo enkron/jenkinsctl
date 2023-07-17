@@ -1,6 +1,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::too_many_lines)]
 use clap::{Parser, Subcommand};
+use colored::Colorize;
 use std::{io::Write, str::FromStr};
 
 use crate::{
@@ -303,7 +304,10 @@ pub async fn handle() -> Result<()> {
         }
         Commands::Copy { item, src, dest } => {
             if let Err(e) = jenkins.copy(item, src, dest).await {
-                log::error!("copy \x1b[30;1mto\x1b[0m a directory is not enabled -> {e}");
+                log::error!(
+                    "copy {} a directory is not enabled -> {e}",
+                    "to".red().bold()
+                );
             }
         }
         Commands::Node { node_commands } => match node_commands {
@@ -343,9 +347,9 @@ pub async fn handle() -> Result<()> {
                 if status {
                     for node in node_info.computer {
                         if node.offline {
-                            println!("{:.<40}\x1b[31moffline\x1b[0m", node.display_name);
+                            println!("{:.<40}{}", node.display_name, "offline".red());
                         } else {
-                            println!("{:.<40}\x1b[32monline\x1b[0m", node.display_name);
+                            println!("{:.<40}{}", node.display_name, "online".green());
                         }
                     }
                 } else {
@@ -456,7 +460,8 @@ pub async fn handle() -> Result<()> {
                                         file.write_all(data.get_ref())?;
                                     }
                                     Err(e) => log::error!(
-                                        "\x1b[30;1m{e}\x1b[m: artifacts not found for the build {build}"
+                                        "{}: artifacts not found for the build {build}",
+                                        e.to_string().red().bold()
                                     ),
                                 }
                             }
@@ -479,7 +484,8 @@ pub async fn handle() -> Result<()> {
                                     file.write_all(data.get_ref())?;
                                 }
                                 Err(e) => log::error!(
-                                    "\x1b[30;1m{e}\x1b[m: artifacts not found for the build {n}"
+                                    "{}: artifacts not found for the build {build}",
+                                    e.to_string().red().bold()
                                 ),
                             }
                         }

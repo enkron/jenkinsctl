@@ -1,5 +1,6 @@
 #![warn(clippy::all, clippy::pedantic)]
 use async_recursion::async_recursion;
+use colored::Colorize;
 
 mod args;
 mod jenkins;
@@ -33,11 +34,11 @@ async fn rec_walk<'t>(
             job_path.pop().unwrap();
             let class = job.class.rsplit_once('.').unwrap().1.to_lowercase();
 
-            for e in &job_path {
+            for e in job_path {
                 if class == "folder" {
                     continue;
                 }
-                print!("\x1b[94;1m{e}\x1b[0m => ");
+                print!("{} => ", e.blue().bold());
             }
 
             rec_walk(&class, jenkins, job.name.as_str(), inner_job.clone()).await?;
