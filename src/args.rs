@@ -109,7 +109,7 @@ enum NodeAction {
     },
     #[command(aliases = ["ls"], about = "List all nodes")]
     List {
-        #[arg(long, help = "Show node offline")]
+        #[arg(short, long, help = "Show node offline")]
         status: bool,
     },
     #[command(about = "Switch node state")]
