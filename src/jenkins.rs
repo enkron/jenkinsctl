@@ -72,17 +72,7 @@ pub struct Jenkins<'x> {
 
 impl<'x> Jenkins<'x> {
     pub fn new(user: &'x str, pswd: &'x str, jenkins_url: &'x str) -> Self {
-        let parsed_url = jenkins_url.parse::<hyper::Uri>().unwrap();
-        let url = format!(
-            "{}://{}:{}@{}:{}",
-            parsed_url.scheme().unwrap(),
-            user,
-            pswd,
-            parsed_url.host().unwrap(),
-            parsed_url.port_u16().unwrap_or(443)
-        )
-        .parse::<hyper::Uri>()
-        .unwrap();
+        let url = jenkins_url.parse::<hyper::Uri>().unwrap();
 
         Self { user, pswd, url }
     }
@@ -94,7 +84,7 @@ impl<'x> Jenkins<'x> {
         method: Method,
     ) -> Result<Response<Body>> {
         let host = url.host().expect("uri has no host");
-        let port = url.port_u16().unwrap();
+        let port = url.port_u16().unwrap_or(443);
         let scheme = url.scheme_str().unwrap();
 
         let req = Request::builder()
