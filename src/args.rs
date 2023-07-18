@@ -262,11 +262,16 @@ impl FromStr for BuildParam {
     type Err = std::num::ParseIntError;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        if s.contains("..") {
+        if s.contains("..") & !s.contains("..=") {
             let start = s.split_once('.').unwrap().0.parse::<u64>()?;
             let end = s.rsplit_once('.').unwrap().1.parse::<u64>()?;
 
             return Ok(Self::Range(start, end));
+        } else if s.contains("..=") {
+            let start = s.split_once('.').unwrap().0.parse::<u64>()?;
+            let end = s.rsplit_once('=').unwrap().1.parse::<u64>()?;
+
+            return Ok(Self::Range(start, end + 1));
         }
         let num = s.parse::<u64>()?;
         Ok(Self::Once(num))
