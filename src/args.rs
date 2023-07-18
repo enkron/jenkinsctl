@@ -437,7 +437,6 @@ pub async fn handle() -> Result<()> {
                 BuildItem::Artifact => {
                     let build_param = build.parse::<BuildParam>()?;
                     match build_param {
-                        #[allow(unused_variables)]
                         BuildParam::Range(start, end) => {
                             for build in start..end {
                                 let tree = Tree::new(format!("{build}/artifact/*zip*/archive.zip"))
