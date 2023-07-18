@@ -1,6 +1,6 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::similar_names)]
-use base64::{engine, Engine as _};
+use base64::{self, Engine as _};
 use hyper::{body::HttpBody as _, Body, Client, Method, Request, Response, StatusCode};
 use hyper_tls::HttpsConnector;
 use serde::Deserialize;
@@ -95,7 +95,7 @@ impl<'x> Jenkins<'x> {
                 hyper::header::AUTHORIZATION,
                 format!(
                     "Basic {}",
-                    engine::general_purpose::URL_SAFE.encode(format!("{user}:{pswd}"))
+                    base64::engine::general_purpose::URL_SAFE.encode(format!("{user}:{pswd}"))
                 ),
             )
             .body(hyper::body::Body::empty())?;
