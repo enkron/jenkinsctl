@@ -1,8 +1,12 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::similar_names)]
 use base64::{self, Engine as _};
-use hyper::{body::HttpBody as _, Body, Client, Method, Request, Response, StatusCode};
-use hyper_tls::HttpsConnector;
+use bytes::Bytes;
+use http_body_util::{BodyExt, Empty};
+use hyper::{
+    body::{Body, Incoming},
+    Method, Request, Response, StatusCode,
+};
 use serde::Deserialize;
 use std::str::FromStr;
 use tokio::io::{self, AsyncWriteExt as _};
@@ -82,10 +86,21 @@ impl<'x> Jenkins<'x> {
         user: &str,
         pswd: &str,
         method: Method,
-    ) -> Result<Response<Body>> {
+    ) -> Result<Response<Incoming>> {
         let host = url.host().expect("uri has no host");
         let port = url.port_u16().unwrap_or(443);
-        let scheme = url.scheme_str().unwrap();
+
+        //let scheme = url.scheme_str().unwrap();
+
+        let stream = tokio::net::TcpStream::connect(format!("{host}:{port}")).await?;
+        let io = hyper_util::rt::TokioIo::new(stream);
+
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
+        tokio::task::spawn(async move {
+            if let Err(err) = conn.await {
+                println!("Connection failed: {:?}", err);
+            }
+        });
 
         let req = Request::builder()
             .uri(url)
@@ -98,21 +113,25 @@ impl<'x> Jenkins<'x> {
                     base64::engine::general_purpose::URL_SAFE.encode(format!("{user}:{pswd}"))
                 ),
             )
-            .body(hyper::body::Body::empty())?;
+            .body(Empty::<Bytes>::new())?;
 
-        let res = if scheme == "http" {
-            let client = Client::new();
-            client.request(req).await
-        } else {
-            let stream = HttpsConnector::new();
-            let client = Client::builder().build::<_, Body>(stream);
-            client.request(req).await
-        }?;
+        //let res = if scheme == "http" {
+        //    //let client = Client::new();
+        //    //client.request(req).await
+        //} else {
+        //    //let stream = HttpsConnector::new();
+        //    //let client = Client::builder().build::<_, Body>(stream);
+        //    //client.request(req).await
+
+        //    sender.send_request(req).await
+        //}?;
+
+        let res = sender.send_request(req).await?;
 
         Ok(res)
     }
 
-    pub async fn get_json_data(&self, tree: &Tree) -> Result<io::BufWriter<Vec<u8>>> {
+    pub async fn get_json_data(&self, tree: &Tree) -> Result<tokio::io::BufWriter<Vec<u8>>> {
         let url = format!("{}/{}", self.url, tree.query).parse::<hyper::Uri>()?;
         let mut res = Self::send_request(&url, self.user, self.pswd, Method::GET).await?;
 
@@ -121,18 +140,23 @@ impl<'x> Jenkins<'x> {
         }
 
         let buf = Vec::new();
-        let mut writer = io::BufWriter::new(buf);
+        let mut writer = tokio::io::BufWriter::new(buf);
 
-        while let Some(next) = res.data().await {
-            let chunk = next?;
-            writer.write_all(&chunk).await?;
+        while let Some(next) = res.frame().await {
+            let frame = next?;
+            if let Some(chunk) = frame.data_ref() {
+                writer.write_all(chunk).await?;
+            }
         }
         writer.flush().await?;
 
         Ok(writer)
     }
 
-    pub async fn get_console_log(&self, tree: &Tree) -> Option<(io::BufWriter<Vec<u8>>, usize)> {
+    pub async fn get_console_log(
+        &self,
+        tree: &Tree,
+    ) -> Option<(tokio::io::BufWriter<Vec<u8>>, usize)> {
         let url = format!("{}/{}", self.url, tree.query)
             .parse::<hyper::Uri>()
             .ok()?;
@@ -150,11 +174,13 @@ impl<'x> Jenkins<'x> {
             .ok()?;
 
         let buf = Vec::new();
-        let mut writer = io::BufWriter::new(buf);
+        let mut writer = tokio::io::BufWriter::new(buf);
 
-        while let Some(next) = res.data().await {
-            let chunk = next.ok()?;
-            writer.write_all(&chunk).await.ok()?;
+        while let Some(next) = res.frame().await {
+            let frame = next.ok()?;
+            if let Some(chunk) = frame.data_ref() {
+                writer.write_all(chunk).await.ok()?;
+            }
         }
         writer.flush().await.ok()?;
 
@@ -166,7 +192,7 @@ impl<'x> Jenkins<'x> {
         Some((writer, offset))
     }
 
-    pub async fn shutdown(self, state: ShutdownState) -> Result<Response<Body>> {
+    pub async fn shutdown(self, state: ShutdownState) -> Result<Response<Incoming>> {
         match state {
             ShutdownState::On { reason } => {
                 if !reason.is_empty() {
@@ -185,7 +211,7 @@ impl<'x> Jenkins<'x> {
         }
     }
 
-    pub async fn restart(self, hard: bool) -> Result<Response<Body>> {
+    pub async fn restart(self, hard: bool) -> Result<Response<Incoming>> {
         if hard {
             let url = format!("{}/restart", self.url).parse::<hyper::Uri>()?;
             return Self::send_request(&url, self.user, self.pswd, Method::POST).await;
@@ -195,7 +221,12 @@ impl<'x> Jenkins<'x> {
         Self::send_request(&url, self.user, self.pswd, Method::POST).await
     }
 
-    pub async fn copy(self, item: CopyItem, src: String, dest: String) -> Result<Response<Body>> {
+    pub async fn copy(
+        self,
+        item: CopyItem,
+        src: String,
+        dest: String,
+    ) -> Result<Response<Incoming>> {
         match item {
             CopyItem::Job => {
                 if dest.contains('/') {
@@ -232,7 +263,7 @@ impl<'x> Jenkins<'x> {
         Ok(info)
     }
 
-    pub async fn build(&self, job_path: &str, params: String) -> Result<Response<Body>> {
+    pub async fn build(&self, job_path: &str, params: String) -> Result<Response<Incoming>> {
         let path_components = std::path::Path::new(job_path)
             .components()
             .map(|e| format!("job/{}/", e.as_os_str().to_str().unwrap()))
@@ -262,7 +293,7 @@ impl<'x> Jenkins<'x> {
         Self::send_request(&url, self.user, self.pswd, Method::POST).await
     }
 
-    pub async fn remove(self, job_path: &str) -> Result<Response<Body>> {
+    pub async fn remove(self, job_path: &str) -> Result<Response<Incoming>> {
         let path_components = std::path::Path::new(job_path)
             .components()
             .map(|e| format!("job/{}/", e.as_os_str().to_str().unwrap()))
@@ -273,7 +304,7 @@ impl<'x> Jenkins<'x> {
         Self::send_request(&url, self.user, self.pswd, Method::DELETE).await
     }
 
-    pub async fn kill(&self, tree: &Tree, signal: String) -> Result<Response<Body>> {
+    pub async fn kill(&self, tree: &Tree, signal: String) -> Result<Response<Incoming>> {
         if let Err(e) = Signal::from_str(signal.as_str()) {
             return Err(format!("invalid signal: {e}").into());
         }
@@ -288,7 +319,7 @@ impl<'x> Jenkins<'x> {
         Self::send_request(&url, self.user, self.pswd, Method::POST).await
     }
 
-    pub async fn set(&self, tree: &Tree, state: NodeState) -> Result<Response<Body>> {
+    pub async fn set(&self, tree: &Tree, state: NodeState) -> Result<Response<Incoming>> {
         let url = match state {
             NodeState::Disconnect { reason } => {
                 if reason.is_empty() {
