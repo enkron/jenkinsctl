@@ -133,7 +133,7 @@ impl<'x> Jenkins<'x> {
         let mut res = Self::send_request(&url, self.user, self.pswd, Method::GET).await?;
 
         if res.status() == StatusCode::NOT_FOUND {
-            return Err(format!("{}", res.status().as_str()).into());
+            return Err(res.status().as_str().into());
         }
 
         let buf = Vec::new();
