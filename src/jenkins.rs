@@ -3,13 +3,10 @@
 use base64::{self, Engine as _};
 use bytes::Bytes;
 use http_body_util::{BodyExt, Empty};
-use hyper::{
-    body::{Body, Incoming},
-    Method, Request, Response, StatusCode,
-};
+use hyper::{body::Incoming, Method, Request, Response, StatusCode};
 use serde::Deserialize;
 use std::str::FromStr;
-use tokio::io::{self, AsyncWriteExt as _};
+use tokio::io::AsyncWriteExt as _;
 use urlencoding::encode;
 
 use crate::{
