@@ -93,11 +93,7 @@ impl<'x> Jenkins<'x> {
         let io = hyper_util::rt::TokioIo::new(stream);
 
         let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
-        tokio::task::spawn(async move {
-            if let Err(err) = conn.await {
-                println!("Connection failed: {:?}", err);
-            }
-        });
+        conn.await?;
 
         let req = Request::builder()
             .uri(url)
