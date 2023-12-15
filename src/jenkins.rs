@@ -4,6 +4,9 @@ use base64::{self, Engine as _};
 use bytes::Bytes;
 use http_body_util::{BodyExt, Empty};
 use hyper::{body::Incoming, Method, Request, Response, StatusCode};
+use hyper_tls::HttpsConnector;
+use hyper_util::client::legacy::Client;
+use hyper_util::rt::TokioExecutor;
 use serde::Deserialize;
 use std::str::FromStr;
 use tokio::io::AsyncWriteExt as _;
@@ -87,13 +90,7 @@ impl<'x> Jenkins<'x> {
         let host = url.host().expect("uri has no host");
         let port = url.port_u16().unwrap_or(443);
 
-        //let scheme = url.scheme_str().unwrap();
-
-        let stream = tokio::net::TcpStream::connect(format!("{host}:{port}")).await?;
-        let io = hyper_util::rt::TokioIo::new(stream);
-
-        let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
-        conn.await?;
+        let scheme = url.scheme_str().unwrap();
 
         let req = Request::builder()
             .uri(url)
@@ -108,18 +105,21 @@ impl<'x> Jenkins<'x> {
             )
             .body(Empty::<Bytes>::new())?;
 
-        //let res = if scheme == "http" {
-        //    //let client = Client::new();
-        //    //client.request(req).await
-        //} else {
-        //    //let stream = HttpsConnector::new();
-        //    //let client = Client::builder().build::<_, Body>(stream);
-        //    //client.request(req).await
+        let res = if scheme == "http" {
+            let stream = tokio::net::TcpStream::connect(format!("{host}:{port}")).await?;
+            let io = hyper_util::rt::TokioIo::new(stream);
 
-        //    sender.send_request(req).await
-        //}?;
+            let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
+            conn.await?;
+            sender.send_request(req).await?
+        } else {
+            // Currently 'https arm' of the `if` statement uses legacy tls implementation and
+            // should be switched in the future
+            let stream = HttpsConnector::new();
+            let sender = Client::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(stream);
 
-        let res = sender.send_request(req).await?;
+            sender.request(req).await?
+        };
 
         Ok(res)
     }
