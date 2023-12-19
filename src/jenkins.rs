@@ -259,7 +259,7 @@ impl<'x> Jenkins<'x> {
     pub async fn build(&self, job_path: &str, params: String) -> Result<Response<Incoming>> {
         let path_components = std::path::Path::new(job_path)
             .components()
-            .map(|e| format!("job/{}/", e.as_os_str().to_str().unwrap()))
+            .map(|e| "job/".to_string() + e.as_os_str().to_str().unwrap() + "/")
             .collect::<String>();
 
         let url = match params.as_str() {
@@ -274,7 +274,7 @@ impl<'x> Jenkins<'x> {
             _ => {
                 let params = params
                     .split(',')
-                    .map(|p| format!("&{}", p))
+                    .map(|p| "&".to_string() + p)
                     .collect::<String>();
                 format!(
                     "{}/{}buildWithParameters?delay=0sec{}",
@@ -289,7 +289,7 @@ impl<'x> Jenkins<'x> {
     pub async fn remove(self, job_path: &str) -> Result<Response<Incoming>> {
         let path_components = std::path::Path::new(job_path)
             .components()
-            .map(|e| format!("job/{}/", e.as_os_str().to_str().unwrap()))
+            .map(|e| "job/".to_string() + e.as_os_str().to_str().unwrap() + "/")
             .collect::<String>();
 
         let url = format!("{}/{}", self.url, path_components).parse::<hyper::Uri>()?;

@@ -18,7 +18,7 @@ async fn rec_walk<'t>(
     mut inner_job: String,
 ) -> Result<()> {
     if class == "folder" {
-        inner_job.push_str(format!("/job/{}", job_name).as_str());
+        inner_job.push_str(format!("/job/{job_name}").as_str());
         let mut query = "/api/json?tree=jobs[fullDisplayName,fullName,name]".to_string();
 
         query.insert_str(0, &inner_job);

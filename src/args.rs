@@ -321,7 +321,7 @@ pub async fn handle() -> Result<()> {
                     let tree = Tree::new("computer/api/json".to_string());
                     let json_data = jenkins.get_json_data(&tree).await?;
                     let node_info = Jenkins::system::<node::Info>(json_data.get_ref().as_slice())?;
-                    println!("{:#?}", node_info);
+                    println!("{node_info:#?}");
                 }
                 ShowAction::Executors { total, busy } => {
                     let tree = Tree::new("computer/api/json".to_string());
@@ -503,7 +503,7 @@ pub async fn handle() -> Result<()> {
                 }
             },
             JobAction::Kill { signal, job, build } => {
-                let tree = Tree::new(format!("{build}")).build_path(&job);
+                let tree = Tree::new(build).build_path(&job);
                 if let Err(e) = jenkins.kill(&tree, signal).await {
                     log::error!("{e}");
                 }

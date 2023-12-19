@@ -1,4 +1,4 @@
-#![allow(clippy::struct_excessive_bools)]
+#![allow(clippy::struct_excessive_bools, clippy::struct_field_names)]
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug, Serialize)]
