@@ -213,6 +213,13 @@ enum JobAction {
         )]
         build: String,
     },
+    #[command(about = "Rebuild specified job")]
+    Rebuild {
+        #[arg(index = 1, help = "Job path (format: path/to/jenkins/job)")]
+        job: String,
+        #[arg(index = 2, help = "Build number")]
+        build: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -507,6 +514,42 @@ pub async fn handle() -> Result<()> {
                 if let Err(e) = jenkins.kill(&tree, signal).await {
                     log::error!("{e}");
                 }
+            }
+            JobAction::Rebuild { job, build } => {
+                let tree = Tree::new(format!("{build}/api/json?tree=actions")).build_path(&job);
+
+                let json_data = jenkins.get_json_data(&tree).await?;
+                let action_obj = Jenkins::system::<job::ActionObj>(json_data.get_ref().as_slice())?;
+
+                let actions_classes = action_obj.actions.as_array().unwrap();
+
+                let mut param_actions_truth = std::collections::HashMap::new();
+                for (idx, class) in actions_classes.iter().enumerate() {
+                    param_actions_truth.insert(class.to_string().contains("ParametersAction"), idx);
+                }
+                println!("{}", param_actions_truth.get(&true).unwrap());
+
+                //let tree = Tree::new(format!(
+                //    "{build}/api/json?tree=actions[parameters[name,value]]{{{idx}}}"
+                //))
+                //.build_path(&job);
+
+                //let json_data = jenkins.get_json_data(&tree).await?;
+                //let action_obj = Jenkins::system::<job::ActionObj>(json_data.get_ref().as_slice())?;
+
+                //println!("{:#?}", build_params.actions);
+
+                //let mut params = String::new();
+
+                //for params_action in build_params.actions {
+                //    //for parameters in params_action.parameters {
+                //    //    params.push_str(
+                //    //        format!("&{}={}", parameters.name, parameters.value).as_str(),
+                //    //    );
+                //    //}
+                //}
+
+                //jenkins.rebuild(&job, params).await?;
             }
         },
         Commands::Info => println!("{url}"),

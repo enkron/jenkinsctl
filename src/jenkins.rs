@@ -286,6 +286,30 @@ impl<'x> Jenkins<'x> {
         Self::send_request(&url, self.user, self.pswd, Method::POST).await
     }
 
+    pub async fn rebuild(&self, job_path: &str, params: String) -> Result<Response<Incoming>> {
+        let path_components = std::path::Path::new(job_path)
+            .components()
+            .map(|e| "job/".to_string() + e.as_os_str().to_str().unwrap() + "/")
+            .collect::<String>();
+
+        println!(
+            "{}{}buildWithParameters?delay=0sec{}",
+            self.url,
+            path_components,
+            encode(params.replace('"', "").as_str())
+        );
+
+        let url = format!(
+            "{}/{}buildWithParameters?delay=0sec{}",
+            self.url,
+            path_components,
+            encode(params.replace('"', "").as_str())
+        )
+        .parse::<hyper::Uri>()?;
+
+        Self::send_request(&url, self.user, self.pswd, Method::POST).await
+    }
+
     pub async fn remove(self, job_path: &str) -> Result<Response<Incoming>> {
         let path_components = std::path::Path::new(job_path)
             .components()
