@@ -292,18 +292,11 @@ impl<'x> Jenkins<'x> {
             .map(|e| "job/".to_string() + e.as_os_str().to_str().unwrap() + "/")
             .collect::<String>();
 
-        println!(
-            "{}{}buildWithParameters?delay=0sec{}",
-            self.url,
-            path_components,
-            encode(params.replace('"', "").as_str())
-        );
-
         let url = format!(
             "{}/{}buildWithParameters?delay=0sec{}",
             self.url,
             path_components,
-            encode(params.replace('"', "").as_str())
+            params.replace('"', "").replace(' ', "%20")
         )
         .parse::<hyper::Uri>()?;
 
