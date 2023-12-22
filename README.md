@@ -63,3 +63,18 @@ Jenkins rest api provides three levels of interruption:
 ```bash
 jenkinsctl job kill -s <HUP|TERM|KILL|1|15|9> <JOB> <BUILD>
 ```
+
+## Rebuild a job
+It is possible to rebuild particular job in a Jenkins web ui, however
+there is no rest api endpoint for the `rebuild` operation.
+
+Therefore the `rebuild` option starts new build with the same parameters
+as in a build specified by the <BUILD> arg.
+
+Technically there is no differences, you can only notice that a job is
+not being rebuilt but started with the same parameters in a console log
+output.
+
+```bash
+jenkinsctl job rebuild <JOB> <BUILD>
+```
