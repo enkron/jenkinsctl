@@ -538,12 +538,15 @@ pub async fn handle() -> Result<()> {
                 let build_params =
                     Jenkins::system::<job::BuildParams>(json_data.get_ref().as_slice())?;
 
+                log::info!("rebuilding the build {build} with params:");
+
                 let mut params = String::new();
                 for params_action in build_params.actions {
                     for parameters in params_action.parameters {
                         params.push_str(
                             format!("&{}={}", parameters.name, parameters.value).as_str(),
                         );
+                        log::info!("{:-<40}{}", parameters.name, parameters.value);
                     }
                 }
 
